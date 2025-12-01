@@ -1,0 +1,10 @@
+flask
+flask-cors
+flask-sqlalchemy
+pymysql
+python-dotenv
+nflreadpy
+pandas>=2.0.0
+polars
+cryptography
+pyarrow
