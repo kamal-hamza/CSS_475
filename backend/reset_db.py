@@ -1,9 +1,21 @@
-import sys
 import os
+import sys
+
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 from app import app, db
-from models import Team, Player, Game, PlayerStats
+from models import (
+    DefenseStats,
+    Game,
+    GameLog,
+    KickingStats,
+    PassingStats,
+    Player,
+    PuntingStats,
+    ReceivingStats,
+    RushingStats,
+    Team,
+)
 
 with app.app_context():
     print("Dropping all existing tables...")
