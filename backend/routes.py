@@ -242,6 +242,8 @@ def register_routes(app):
 
             # Calculate PPR (fantasy_points + receptions)
             receptions = rec.receptions if rec else 0
+            targets = rec.targets if rec else 0
+            interceptions = p.interceptions if p else 0
             fantasy_points_ppr = (log.fantasy_points or 0) + receptions
 
             result.append(
@@ -250,10 +252,13 @@ def register_routes(app):
                     "opponent": opponent,
                     "passing_yards": p.passing_yards if p else 0,
                     "passing_tds": p.passing_tds if p else 0,
+                    "interceptions": interceptions,
                     "rushing_yards": r.rushing_yards if r else 0,
                     "rushing_tds": r.rushing_tds if r else 0,
+                    "receptions": receptions,
                     "receiving_yards": rec.receiving_yards if rec else 0,
                     "receiving_tds": rec.receiving_tds if rec else 0,
+                    "targets": targets,
                     "fantasy_points": log.fantasy_points,
                     "fantasy_points_ppr": fantasy_points_ppr,
                 }
