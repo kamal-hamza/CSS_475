@@ -1465,13 +1465,23 @@ def register_routes(app):
                 Player.player_name,
                 Player.position,
                 Player.team,
-                GameLog.week,
-                GameLog.opponent,
-                GameLog.fantasy_points_ppr,
+                Game.week,
+                case(
+                    (Game.home_team == Player.team, Game.away_team),
+                    else_=Game.home_team
+                ).label("opponent"),
+                (GameLog.fantasy_points +
+                 func.coalesce(
+                     db.session.query(ReceivingStats.receptions)
+                     .filter(ReceivingStats.player_id == GameLog.player_id,
+                             ReceivingStats.game_id == GameLog.game_id)
+                     .scalar_subquery(), 0
+                 )).label("fantasy_points_ppr"),
             )
             .join(GameLog, Player.player_id == GameLog.player_id)
-            .filter(GameLog.season == season, GameLog.week == week)
-            .order_by(desc(GameLog.fantasy_points_ppr))
+            .join(Game, GameLog.game_id == Game.game_id)
+            .filter(Game.season == season, Game.week == week)
+            .order_by(desc("fantasy_points_ppr"))
             .limit(limit)
             .all()
         )
@@ -1503,8 +1513,11 @@ def register_routes(app):
             db.session.query(
                 Player.player_name,
                 Player.team,
-                GameLog.week,
-                GameLog.opponent,
+                Game.week,
+                case(
+                    (Game.home_team == Player.team, Game.away_team),
+                    else_=Game.home_team
+                ).label("opponent"),
                 PassingStats.passing_yards,
                 PassingStats.passing_tds,
                 PassingStats.interceptions,
@@ -1512,6 +1525,7 @@ def register_routes(app):
                 PassingStats.attempts,
             )
             .join(GameLog, Player.player_id == GameLog.player_id)
+            .join(Game, GameLog.game_id == Game.game_id)
             .join(
                 PassingStats,
                 and_(
@@ -1520,7 +1534,7 @@ def register_routes(app):
                 ),
             )
             .filter(
-                GameLog.season == season,
+                Game.season == season,
                 Player.position == "QB",
                 PassingStats.passing_yards >= min_yards,
             )
@@ -1565,9 +1579,10 @@ def register_routes(app):
                 func.sum(RushingStats.rushing_yards).label("total_yards"),
                 func.sum(RushingStats.rushing_tds).label("total_tds"),
                 func.sum(RushingStats.carries).label("total_carries"),
-                func.count(GameLog.week).label("games_played"),
+                func.count(func.distinct(GameLog.game_id)).label("games_played"),
             )
             .join(GameLog, Player.player_id == GameLog.player_id)
+            .join(Game, GameLog.game_id == Game.game_id)
             .join(
                 RushingStats,
                 and_(
@@ -1575,7 +1590,7 @@ def register_routes(app):
                     RushingStats.game_id == GameLog.game_id,
                 ),
             )
-            .filter(GameLog.season == season)
+            .filter(Game.season == season)
             .group_by(Player.player_id, Player.player_name, Player.position, Player.team)
             .order_by(desc("total_yards"))
             .limit(limit)
@@ -1618,9 +1633,10 @@ def register_routes(app):
                 func.sum(ReceivingStats.receptions).label("total_receptions"),
                 func.sum(ReceivingStats.receiving_tds).label("total_tds"),
                 func.sum(ReceivingStats.targets).label("total_targets"),
-                func.count(GameLog.week).label("games_played"),
+                func.count(func.distinct(GameLog.game_id)).label("games_played"),
             )
             .join(GameLog, Player.player_id == GameLog.player_id)
+            .join(Game, GameLog.game_id == Game.game_id)
             .join(
                 ReceivingStats,
                 and_(
@@ -1628,7 +1644,7 @@ def register_routes(app):
                     ReceivingStats.game_id == GameLog.game_id,
                 ),
             )
-            .filter(GameLog.season == season)
+            .filter(Game.season == season)
             .group_by(Player.player_id, Player.player_name, Player.position, Player.team)
             .order_by(desc("total_yards"))
             .limit(limit)
@@ -1674,7 +1690,9 @@ def register_routes(app):
                 func.sum(PassingStats.interceptions).label("total_ints"),
             )
             .join(GameLog, PassingStats.player_id == GameLog.player_id)
-            .filter(GameLog.season == season, GameLog.team == team)
+            .join(Game, GameLog.game_id == Game.game_id)
+            .join(Player, GameLog.player_id == Player.player_id)
+            .filter(Game.season == season, Player.team == team)
             .first()
         )
 
@@ -1685,7 +1703,9 @@ def register_routes(app):
                 func.sum(RushingStats.rushing_tds).label("total_rush_tds"),
             )
             .join(GameLog, RushingStats.player_id == GameLog.player_id)
-            .filter(GameLog.season == season, GameLog.team == team)
+            .join(Game, GameLog.game_id == Game.game_id)
+            .join(Player, GameLog.player_id == Player.player_id)
+            .filter(Game.season == season, Player.team == team)
             .first()
         )
 
@@ -1697,14 +1717,18 @@ def register_routes(app):
                 func.sum(ReceivingStats.receptions).label("total_receptions"),
             )
             .join(GameLog, ReceivingStats.player_id == GameLog.player_id)
-            .filter(GameLog.season == season, GameLog.team == team)
+            .join(Game, GameLog.game_id == Game.game_id)
+            .join(Player, GameLog.player_id == Player.player_id)
+            .filter(Game.season == season, Player.team == team)
             .first()
         )
 
         # Get games played
         games = (
             db.session.query(func.count(func.distinct(GameLog.game_id)))
-            .filter(GameLog.season == season, GameLog.team == team)
+            .join(Game, GameLog.game_id == Game.game_id)
+            .join(Player, GameLog.player_id == Player.player_id)
+            .filter(Game.season == season, Player.team == team)
             .scalar()
         )
 
@@ -1753,10 +1777,23 @@ def register_routes(app):
             return jsonify({"error": "Player not found"}), 404
 
         results = (
-            db.session.query(GameLog, Game)
+            db.session.query(
+                GameLog,
+                Game,
+                case(
+                    (Game.home_team == player.team, Game.away_team),
+                    else_=Game.home_team
+                ).label("opponent"),
+                func.coalesce(
+                    db.session.query(ReceivingStats.receptions)
+                    .filter(ReceivingStats.player_id == GameLog.player_id,
+                            ReceivingStats.game_id == GameLog.game_id)
+                    .scalar_subquery(), 0
+                ).label("receptions")
+            )
             .join(Game, GameLog.game_id == Game.game_id)
-            .filter(GameLog.player_id == player_id, GameLog.season == season)
-            .order_by(GameLog.week)
+            .filter(GameLog.player_id == player_id, Game.season == season)
+            .order_by(Game.week)
             .all()
         )
 
@@ -1771,15 +1808,15 @@ def register_routes(app):
                 "season": season,
                 "games": [
                     {
-                        "week": gl.week,
-                        "opponent": gl.opponent,
-                        "fantasy_points": round(float(gl.fantasy_points_ppr), 2)
-                        if gl.fantasy_points_ppr
+                        "week": g.week,
+                        "opponent": opponent,
+                        "fantasy_points": round(float(gl.fantasy_points + receptions), 2)
+                        if gl.fantasy_points
                         else 0,
                         "gameday": g.gameday.isoformat() if g.gameday else None,
                         "stadium": g.stadium,
                     }
-                    for gl, g in results
+                    for gl, g, opponent, receptions in results
                 ],
             }
         )
