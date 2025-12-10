@@ -199,24 +199,10 @@ def register_routes(app):
                     "stadium_roof": g.stadium.roof if g.stadium else None,
                     "stadium_surface": g.stadium.surface if g.stadium else None,
 
-                    # Weather
-                    "temp": g.temp,
-                    "wind": g.wind,
-
                     # Game Context
                     "away_rest": g.away_rest,
                     "home_rest": g.home_rest,
                     "div_game": g.div_game,
-
-                    # Betting Data
-                    "spread_line": float(g.spread_line) if g.spread_line else None,
-                    "total_line": float(g.total_line) if g.total_line else None,
-                    "away_moneyline": g.away_moneyline,
-                    "home_moneyline": g.home_moneyline,
-                    "away_spread_odds": g.away_spread_odds,
-                    "home_spread_odds": g.home_spread_odds,
-                    "over_odds": g.over_odds,
-                    "under_odds": g.under_odds,
 
                     # External IDs
                     "espn": g.espn,
