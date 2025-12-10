@@ -311,7 +311,7 @@ const PlayerProfile = () => {
 
             {/* Charts Section */}
             <Grid container spacing={3} sx={{ mb: 4 }}>
-                <Grid item xs={12} lg={6}>
+                <Grid item xs={12}>
                     <Paper
                         elevation={0}
                         sx={{
@@ -396,7 +396,7 @@ const PlayerProfile = () => {
                     </Paper>
                 </Grid>
 
-                <Grid item xs={12} lg={6}>
+                <Grid item xs={12}>
                     <Paper
                         elevation={0}
                         sx={{
