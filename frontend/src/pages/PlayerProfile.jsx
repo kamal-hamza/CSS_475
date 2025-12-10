@@ -143,7 +143,7 @@ const PlayerProfile = () => {
     );
 
     return (
-        <Container maxWidth="xl" sx={{ py: 4 }}>
+        <Container maxWidth={false} sx={{ py: 4, px: 4 }}>
             <PageHeader
                 title={player?.player_name || `Player ${id}`}
                 subtitle={`${player?.team || "Unknown Team"} • ${player?.position || "Unknown Position"} | Performance analysis`}
