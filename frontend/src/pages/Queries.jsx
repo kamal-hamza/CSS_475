@@ -19,8 +19,10 @@ import {
     Accordion,
     AccordionSummary,
     AccordionDetails,
-    Alert,
     Chip,
+    Collapse,
+    IconButton,
+    Alert,
 } from "@mui/material";
 import {
     ExpandMore as ExpandMoreIcon,
@@ -31,12 +33,14 @@ import {
     BarChart as BarChartIcon,
     People as PeopleIcon,
     SportsFootball as FootballIcon,
+    Code as CodeIcon,
 } from "@mui/icons-material";
 import api from "../services/api";
 
 const Queries = () => {
     const [loading, setLoading] = useState({});
     const [results, setResults] = useState({});
+    const [showSql, setShowSql] = useState({});
     const [params, setParams] = useState({
         season: 2024,
         week: 1,
@@ -45,6 +49,10 @@ const Queries = () => {
         limit: 15,
         player_id: "00-0033873", // Patrick Mahomes as default
     });
+
+    const toggleSql = (queryType) => {
+        setShowSql({ ...showSql, [queryType]: !showSql[queryType] });
+    };
 
     // Auto-run the first simple query on page load
     useEffect(() => {
@@ -88,7 +96,7 @@ const Queries = () => {
                     {icon}
                     <Box sx={{ ml: 2, flexGrow: 1 }}>
                         <Typography variant="h6">{title}</Typography>
-                        <Typography variant="body2" color="text.secondary">
+                        <Typography variant="caption" color="text.secondary">
                             {description}
                         </Typography>
                     </Box>
@@ -96,70 +104,92 @@ const Queries = () => {
             </AccordionSummary>
             <AccordionDetails>
                 <Box sx={{ width: "100%" }}>
-                    {/* SQL Query Display */}
-                    <Alert
-                        severity="info"
+                    {/* Parameters */}
+                    {paramInputs.length > 0 && (
+                        <Grid container spacing={2} sx={{ mb: 2 }}>
+                            {paramInputs.map(({ key, label }) => (
+                                <Grid item xs={12} sm={6} md={4} key={key}>
+                                    <TextField
+                                        fullWidth
+                                        label={label}
+                                        value={params[key] || ""}
+                                        onChange={(e) =>
+                                            setParams({
+                                                ...params,
+                                                [key]: e.target.value,
+                                            })
+                                        }
+                                        size="small"
+                                    />
+                                </Grid>
+                            ))}
+                        </Grid>
+                    )}
+
+                    <Box
                         sx={{
+                            display: "flex",
+                            gap: 1,
                             mb: 2,
-                            fontFamily: "monospace",
-                            fontSize: "0.85rem",
+                            alignItems: "center",
                         }}
                     >
-                        <Typography
-                            variant="subtitle2"
-                            sx={{ mb: 1, fontWeight: "bold" }}
+                        <Button
+                            variant="contained"
+                            color="primary"
+                            startIcon={
+                                loading[queryType] ? (
+                                    <CircularProgress
+                                        size={20}
+                                        color="inherit"
+                                    />
+                                ) : (
+                                    <SearchIcon />
+                                )
+                            }
+                            onClick={() =>
+                                executeQuery(queryType, endpoint, queryParams)
+                            }
+                            disabled={loading[queryType]}
                         >
-                            SQL Query:
-                        </Typography>
-                        <pre
-                            style={{
-                                margin: 0,
-                                whiteSpace: "pre-wrap",
-                                wordWrap: "break-word",
+                            {loading[queryType] ? "Loading..." : "Run Query"}
+                        </Button>
+
+                        <Button
+                            size="small"
+                            startIcon={<CodeIcon />}
+                            onClick={() => toggleSql(queryType)}
+                            variant="outlined"
+                        >
+                            {showSql[queryType] ? "Hide SQL" : "Show SQL"}
+                        </Button>
+                    </Box>
+
+                    {/* Collapsible SQL Query */}
+                    <Collapse in={showSql[queryType]}>
+                        <Paper
+                            sx={{
+                                p: 2,
+                                mb: 2,
+                                bgcolor: "background.paper",
+                                border: 1,
+                                borderColor: "divider",
+                                fontFamily: "monospace",
+                                fontSize: "0.875rem",
                             }}
                         >
-                            {sqlQuery}
-                        </pre>
-                    </Alert>
-
-                    {/* Parameters */}
-                    <Grid container spacing={2} sx={{ mb: 2 }}>
-                        {paramInputs.map(({ key, label }) => (
-                            <Grid item xs={12} sm={6} md={4} key={key}>
-                                <TextField
-                                    fullWidth
-                                    label={label}
-                                    value={params[key] || ""}
-                                    onChange={(e) =>
-                                        setParams({
-                                            ...params,
-                                            [key]: e.target.value,
-                                        })
-                                    }
-                                    size="small"
-                                />
-                            </Grid>
-                        ))}
-                    </Grid>
-
-                    <Button
-                        variant="contained"
-                        color="primary"
-                        startIcon={
-                            loading[queryType] ? (
-                                <CircularProgress size={20} color="inherit" />
-                            ) : (
-                                <SearchIcon />
-                            )
-                        }
-                        onClick={() =>
-                            executeQuery(queryType, endpoint, queryParams)
-                        }
-                        disabled={loading[queryType]}
-                        sx={{ mb: 2 }}
-                    >
-                        {loading[queryType] ? "Loading..." : "Run Query"}
-                    </Button>
+                            <pre
+                                style={{
+                                    margin: 0,
+                                    whiteSpace: "pre-wrap",
+                                    wordWrap: "break-word",
+                                    color: "inherit",
+                                }}
+                            >
+                                {sqlQuery}
+                            </pre>
+                        </Paper>
+                    </Collapse>
 
                     {/* Results */}
                     {results[queryType] && renderFunction(results[queryType])}
@@ -777,37 +807,25 @@ const Queries = () => {
 
     return (
         <Container maxWidth="xl">
-            <Box sx={{ mb: 4 }}>
+            <Box sx={{ mb: 3 }}>
                 <Typography
-                    variant="h3"
+                    variant="h4"
                     component="h1"
-                    sx={{ fontWeight: "bold", mb: 1 }}
+                    sx={{ fontWeight: "bold", mb: 0.5 }}
                 >
-                    SQL Query Demonstrations
+                    SQL Queries
                 </Typography>
-                <Typography variant="h6" color="text.secondary">
-                    Interactive SQL queries showing our NFL database in action
+                <Typography variant="body2" color="text.secondary">
+                    Expand any query to view parameters, run it, and see results
                 </Typography>
-                <Alert severity="info" sx={{ mt: 2 }}>
-                    Click "Run Query" on any accordion below to see the results.
-                    You can modify the parameters before running!
-                </Alert>
             </Box>
 
-            <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
-                {/* BEGINNER QUERIES */}
-                <Typography
-                    variant="h5"
-                    sx={{ mt: 2, mb: 1, fontWeight: "bold" }}
-                >
-                    🟢 Beginner Queries - Start Here!
-                </Typography>
-
+            <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5 }}>
                 {/* Query 0.1: All Teams */}
                 {renderQueryCard(
-                    "📋 All NFL Teams",
-                    "The simplest query: SELECT all teams from the database",
-                    <PeopleIcon color="success" />,
+                    "All NFL Teams",
+                    "List all teams",
+                    <PeopleIcon />,
                     "allTeams",
                     "/api/queries/all-teams",
                     {},
@@ -824,9 +842,9 @@ ORDER BY team_name`,
 
                 {/* Query 0.2: Players by Team */}
                 {renderQueryCard(
-                    "👥 Players on a Team",
-                    "Simple SELECT with WHERE clause: Find all players on a specific team",
-                    <PeopleIcon color="success" />,
+                    "Players on a Team",
+                    "Filter players by team",
+                    <PeopleIcon />,
                     "playersByTeam",
                     "/api/queries/players-by-team",
                     { team: params.team },
@@ -848,9 +866,9 @@ ORDER BY position, player_name`,
 
                 {/* Query 0.3: Games by Week */}
                 {renderQueryCard(
-                    "🏈 Games in a Week",
-                    "SELECT with multiple WHERE conditions: Show all games for a specific week and season",
-                    <FootballIcon color="success" />,
+                    "Games in a Week",
+                    "Show all games for a specific week and season",
+                    <FootballIcon />,
                     "gamesByWeek",
                     "/api/queries/games-by-week",
                     { week: params.week, season: params.season },
@@ -873,19 +891,11 @@ ORDER BY gameday`,
                     renderGamesByWeek,
                 )}
 
-                {/* INTERMEDIATE QUERIES */}
-                <Typography
-                    variant="h5"
-                    sx={{ mt: 4, mb: 1, fontWeight: "bold" }}
-                >
-                    🟡 Intermediate Queries - JOINs & Aggregates
-                </Typography>
-
                 {/* Query 1: Top Fantasy Scorers */}
                 {renderQueryCard(
-                    "🏆 Top Fantasy Scorers by Week",
-                    "JOIN two tables: Combine player info with their game performance",
-                    <TrophyIcon color="warning" />,
+                    "Top Fantasy Scorers by Week",
+                    "Combine player info with their game performance",
+                    <TrophyIcon />,
                     "topScorers",
                     "/api/queries/top-scorers",
                     {
@@ -917,9 +927,9 @@ LIMIT ${params.limit}`,
 
                 {/* Query 2: QB Passing Leaders */}
                 {renderQueryCard(
-                    "🎯 QB Passing Yard Leaders",
-                    "Multiple JOINs: Connect 3 tables (players, game_logs, passing_stats) to find top QB games",
-                    <TrendingUpIcon color="warning" />,
+                    "QB Passing Yard Leaders",
+                    "Connect players, game logs, and passing stats",
+                    <TrendingUpIcon />,
                     "qbLeaders",
                     "/api/queries/qb-passing-leaders",
                     {
@@ -956,19 +966,11 @@ LIMIT ${params.limit}`,
                     renderQBLeaders,
                 )}
 
-                {/* ADVANCED QUERIES */}
-                <Typography
-                    variant="h5"
-                    sx={{ mt: 4, mb: 1, fontWeight: "bold" }}
-                >
-                    🔴 Advanced Queries - Aggregates & Calculations
-                </Typography>
-
                 {/* Query 3: Rushing Leaders */}
                 {renderQueryCard(
-                    "💨 Season Rushing Leaders",
-                    "GROUP BY with aggregate functions: Calculate season totals using SUM() and COUNT()",
-                    <SpeedIcon color="error" />,
+                    "Season Rushing Leaders",
+                    "Calculate season totals using aggregate functions",
+                    <SpeedIcon />,
                     "rushingLeaders",
                     "/api/queries/rushing-leaders",
                     { season: params.season, limit: params.limit },
@@ -999,9 +1001,9 @@ LIMIT ${params.limit}`,
 
                 {/* Query 4: Receiving Leaders */}
                 {renderQueryCard(
-                    "🎣 Season Receiving Leaders",
-                    "Complex aggregation: Multiple SUM() calculations grouped by player",
-                    <PeopleIcon color="error" />,
+                    "Season Receiving Leaders",
+                    "Multiple calculations grouped by player",
+                    <PeopleIcon />,
                     "receivingLeaders",
                     "/api/queries/receiving-leaders",
                     { season: params.season, limit: params.limit },
@@ -1031,9 +1033,9 @@ LIMIT ${params.limit}`,
 
                 {/* Query 5: Team Aggregate Stats */}
                 {renderQueryCard(
-                    "📊 Team Offensive Statistics",
-                    "Multiple queries combined: Separate aggregations for passing, rushing, and receiving stats",
-                    <BarChartIcon color="error" />,
+                    "Team Offensive Statistics",
+                    "Separate aggregations for passing, rushing, and receiving",
+                    <BarChartIcon />,
                     "teamStats",
                     "/api/queries/team-stats",
                     { season: params.season, team: params.team },
@@ -1071,9 +1073,9 @@ WHERE gl.season = ? AND gl.team = ?`,
 
                 {/* Query 6: Player Game Log */}
                 {renderQueryCard(
-                    "📅 Player Game-by-Game Log",
-                    "Detailed JOIN: Show a player's week-by-week performance throughout the season",
-                    <FootballIcon color="error" />,
+                    "Player Game-by-Game Log",
+                    "Week-by-week performance throughout the season",
+                    <FootballIcon />,
                     "playerGameLog",
                     "/api/queries/player-game-log",
                     { player_id: params.player_id, season: params.season },
