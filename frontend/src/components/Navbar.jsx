@@ -97,6 +97,20 @@ const Navbar = () => {
                         >
                             Games
                         </Button>
+                        <Button
+                            component={Link}
+                            to="/complex-queries"
+                            sx={{ my: 2, color: "white", display: "block" }}
+                        >
+                            Complex Queries
+                        </Button>
+                        <Button
+                            component={Link}
+                            to="/admin"
+                            sx={{ my: 2, color: "white", display: "block" }}
+                        >
+                            Admin
+                        </Button>
                     </Box>
 
                     <Box sx={{ flexGrow: 0, width: 300 }}>

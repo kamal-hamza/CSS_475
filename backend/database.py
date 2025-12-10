@@ -13,5 +13,7 @@ def get_db_uri():
     host = os.getenv('DB_HOST')
     port = os.getenv('DB_PORT')
     name = os.getenv('DB_NAME')
-    
+
+    # For Aiven cloud database, SSL is handled automatically by the service
+    # No need to specify SSL parameters in connection string
     return f"mysql+pymysql://{user}:{password}@{host}:{port}/{name}"
