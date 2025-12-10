@@ -29,6 +29,11 @@ export const searchPlayers = async (query) => {
     return response.data;
 };
 
+export const searchPlayersPaginated = async (params) => {
+    const response = await api.get("/players/search", { params });
+    return response.data;
+};
+
 export const getPlayerStats = async (playerId, season = 2024) => {
     const response = await api.get(`/stats/player/${playerId}`, {
         params: { season },

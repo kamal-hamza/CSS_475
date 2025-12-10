@@ -11,6 +11,7 @@ import Games from "./pages/Games";
 import PlayerProfile from "./pages/PlayerProfile";
 import Admin from "./pages/Admin";
 import ComplexQueries from "./pages/ComplexQueries";
+import Search from "./pages/Search";
 
 function App() {
     return (
@@ -31,6 +32,7 @@ function App() {
                             <Route path="/players" element={<Players />} />
                             <Route path="/teams" element={<Teams />} />
                             <Route path="/games" element={<Games />} />
+                            <Route path="/search" element={<Search />} />
                             <Route
                                 path="/player/:id"
                                 element={<PlayerProfile />}

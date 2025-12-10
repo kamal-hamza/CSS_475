@@ -39,7 +39,15 @@ const Navbar = () => {
 
     const handlePlayerSelect = (event, value) => {
         if (value) {
-            navigate(`/ player / ${value.player_id} `);
+            navigate(`/player/${value.player_id}`);
+            setSearchQuery("");
+            setSearchResults([]);
+        }
+    };
+
+    const handleSearchKeyPress = (event) => {
+        if (event.key === "Enter" && searchQuery.length >= 2) {
+            navigate(`/search?q=${encodeURIComponent(searchQuery)}`);
             setSearchQuery("");
             setSearchResults([]);
         }
@@ -99,6 +107,13 @@ const Navbar = () => {
                         </Button>
                         <Button
                             component={Link}
+                            to="/search"
+                            sx={{ my: 2, color: "white", display: "block" }}
+                        >
+                            Search
+                        </Button>
+                        <Button
+                            component={Link}
                             to="/complex-queries"
                             sx={{ my: 2, color: "white", display: "block" }}
                         >
@@ -116,11 +131,34 @@ const Navbar = () => {
                     <Box sx={{ flexGrow: 0, width: 300 }}>
                         <Autocomplete
                             freeSolo
-                            options={searchResults}
+                            options={
+                                searchQuery.length >= 2 &&
+                                searchResults.length > 0
+                                    ? [
+                                          ...searchResults,
+                                          {
+                                              player_id: "view-all",
+                                              player_name:
+                                                  "View all results...",
+                                              isAction: true,
+                                          },
+                                      ]
+                                    : searchResults
+                            }
                             getOptionLabel={(option) =>
                                 option.player_name || ""
                             }
-                            onChange={handlePlayerSelect}
+                            onChange={(event, value) => {
+                                if (value && value.isAction) {
+                                    navigate(
+                                        `/search?q=${encodeURIComponent(searchQuery)}`,
+                                    );
+                                    setSearchQuery("");
+                                    setSearchResults([]);
+                                } else {
+                                    handlePlayerSelect(event, value);
+                                }
+                            }}
                             renderInput={(params) => (
                                 <TextField
                                     {...params}
@@ -130,6 +168,7 @@ const Navbar = () => {
                                     onChange={(e) =>
                                         setSearchQuery(e.target.value)
                                     }
+                                    onKeyPress={handleSearchKeyPress}
                                     sx={{
                                         backgroundColor:
                                             "rgba(255,255,255,0.1)",
@@ -164,22 +203,44 @@ const Navbar = () => {
                             )}
                             renderOption={(props, option) => (
                                 <li {...props} key={option.player_id}>
-                                    <Box
-                                        sx={{
-                                            display: "flex",
-                                            flexDirection: "column",
-                                        }}
-                                    >
-                                        <Typography variant="body1">
-                                            {option.player_name}
-                                        </Typography>
-                                        <Typography
-                                            variant="caption"
-                                            color="text.secondary"
+                                    {option.isAction ? (
+                                        <Box
+                                            sx={{
+                                                display: "flex",
+                                                alignItems: "center",
+                                                gap: 1,
+                                                width: "100%",
+                                                py: 1,
+                                                borderTop:
+                                                    "1px solid rgba(255,255,255,0.1)",
+                                                color: "primary.main",
+                                                fontWeight: "bold",
+                                            }}
                                         >
-                                            {option.position} - {option.team}
-                                        </Typography>
-                                    </Box>
+                                            <SearchIcon fontSize="small" />
+                                            <Typography variant="body2">
+                                                {option.player_name}
+                                            </Typography>
+                                        </Box>
+                                    ) : (
+                                        <Box
+                                            sx={{
+                                                display: "flex",
+                                                flexDirection: "column",
+                                            }}
+                                        >
+                                            <Typography variant="body1">
+                                                {option.player_name}
+                                            </Typography>
+                                            <Typography
+                                                variant="caption"
+                                                color="text.secondary"
+                                            >
+                                                {option.position} -{" "}
+                                                {option.team}
+                                            </Typography>
+                                        </Box>
+                                    )}
                                 </li>
                             )}
                         />

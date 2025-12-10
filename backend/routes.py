@@ -73,6 +73,12 @@ def register_routes(app):
             ]
         )
 
+    @app.route("/api/positions", methods=["GET"])
+    def get_positions():
+        """Get all unique positions"""
+        positions = db.session.query(Player.position).distinct().filter(Player.position.isnot(None)).order_by(Player.position).all()
+        return jsonify([p[0] for p in positions])
+
     @app.route("/api/players", methods=["GET"])
     def get_players():
         """Get players with optional filters"""
@@ -398,13 +404,36 @@ def register_routes(app):
 
     @app.route("/api/search", methods=["GET"])
     def search_players():
-        """Search players by name"""
+        """Search players by name or position"""
         query = request.args.get("q", "")
+        position = request.args.get("position", "")
+
         if not query or len(query) < 2:
             return jsonify([])
 
+        # Build query with filters
+        search_query = Player.query.filter(
+            Player.player_name.ilike(f"%{query}%")
+        )
+
+        # Add position filter if provided
+        if position:
+            search_query = search_query.filter(Player.position == position)
+
+        # Order by name similarity (exact matches first, then starts with, then contains)
+        # SQLite/MySQL compatible ordering
         players = (
-            Player.query.filter(Player.player_name.ilike(f"%{query}%")).limit(10).all()
+            search_query
+            .order_by(
+                db.case(
+                    (Player.player_name.ilike(query), 1),
+                    (Player.player_name.ilike(f"{query}%"), 2),
+                    else_=3
+                ),
+                Player.player_name
+            )
+            .limit(20)
+            .all()
         )
 
         return jsonify(
@@ -418,6 +447,91 @@ def register_routes(app):
                 for p in players
             ]
         )
+
+    @app.route("/api/players/search", methods=["GET"])
+    def search_players_paginated():
+        """Paginated player search with advanced filtering and sorting"""
+        # Get query parameters
+        query = request.args.get("q", "").strip()
+        position = request.args.get("position", "")
+        team = request.args.get("team", "")
+        page = request.args.get("page", 1, type=int)
+        per_page = request.args.get("per_page", 20, type=int)
+        sort_by = request.args.get("sort_by", "name")  # name, position, team
+        sort_order = request.args.get("sort_order", "asc")  # asc, desc
+
+        # Validate per_page limits
+        per_page = min(max(per_page, 1), 100)  # Between 1 and 100
+        page = max(page, 1)  # At least page 1
+
+        # Build base query
+        search_query = Player.query
+
+        # Apply name filter
+        if query and len(query) >= 2:
+            search_query = search_query.filter(
+                Player.player_name.ilike(f"%{query}%")
+            )
+
+        # Apply position filter
+        if position:
+            search_query = search_query.filter(Player.position == position)
+
+        # Apply team filter
+        if team:
+            search_query = search_query.filter(Player.team == team)
+
+        # Apply sorting
+        if sort_by == "name":
+            sort_column = Player.player_name
+        elif sort_by == "position":
+            sort_column = Player.position
+        elif sort_by == "team":
+            sort_column = Player.team
+        else:
+            sort_column = Player.player_name
+
+        if sort_order == "desc":
+            sort_column = sort_column.desc()
+
+        search_query = search_query.order_by(sort_column)
+
+        # Execute paginated query
+        pagination = search_query.paginate(
+            page=page,
+            per_page=per_page,
+            error_out=False
+        )
+
+        # Build response
+        return jsonify({
+            "players": [
+                {
+                    "player_id": p.player_id,
+                    "player_name": p.player_name,
+                    "position": p.position,
+                    "team": p.team,
+                }
+                for p in pagination.items
+            ],
+            "pagination": {
+                "page": pagination.page,
+                "per_page": pagination.per_page,
+                "total": pagination.total,
+                "pages": pagination.pages,
+                "has_next": pagination.has_next,
+                "has_prev": pagination.has_prev,
+                "next_page": pagination.next_num if pagination.has_next else None,
+                "prev_page": pagination.prev_num if pagination.has_prev else None,
+            },
+            "filters": {
+                "query": query,
+                "position": position,
+                "team": team,
+                "sort_by": sort_by,
+                "sort_order": sort_order,
+            }
+        })
 
     @app.route("/api/stats/compare", methods=["GET"])
     def compare_players():
