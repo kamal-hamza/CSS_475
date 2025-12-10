@@ -1385,7 +1385,7 @@ def register_routes(app):
         results = db.session.query(
             Team.team_abbr,
             Team.team_name,
-            Team.team_conference,
+            Team.team_conf,
             Team.team_division
         ).order_by(Team.team_name).all()
 
@@ -1393,7 +1393,7 @@ def register_routes(app):
             {
                 "abbr": r.team_abbr,
                 "name": r.team_name,
-                "conference": r.team_conference,
+                "conference": r.team_conf,
                 "division": r.team_division
             }
             for r in results
