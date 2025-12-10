@@ -310,173 +310,170 @@ const PlayerProfile = () => {
             </Grid>
 
             {/* Charts Section */}
-            <Grid container spacing={3} sx={{ mb: 4 }}>
-                <Grid item xs={12}>
-                    <Paper
-                        elevation={0}
+            <Box sx={{ mb: 4 }}>
+                <Paper
+                    elevation={0}
+                    sx={{
+                        p: 3,
+                        bgcolor: "#131B2F",
+                        border: "1px solid rgba(255,255,255,0.05)",
+                        borderRadius: 4,
+                        mb: 3,
+                    }}
+                >
+                    <Box
                         sx={{
-                            p: 3,
-                            bgcolor: "#131B2F",
-                            border: "1px solid rgba(255,255,255,0.05)",
-                            borderRadius: 4,
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 1,
+                            mb: 3,
                         }}
                     >
-                        <Box
-                            sx={{
-                                display: "flex",
-                                alignItems: "center",
-                                gap: 1,
-                                mb: 3,
-                            }}
-                        >
-                            <TrendingUp color="primary" />
-                            <Typography variant="h6" fontWeight="bold">
-                                Weekly Fantasy Performance
-                            </Typography>
-                        </Box>
-                        <Box sx={{ height: 350 }}>
-                            <ResponsiveContainer width="100%" height="100%">
-                                <AreaChart data={stats}>
-                                    <defs>
-                                        <linearGradient
-                                            id="colorPoints"
-                                            x1="0"
-                                            y1="0"
-                                            x2="0"
-                                            y2="1"
-                                        >
-                                            <stop
-                                                offset="5%"
-                                                stopColor="#3B82F6"
-                                                stopOpacity={0.3}
-                                            />
-                                            <stop
-                                                offset="95%"
-                                                stopColor="#3B82F6"
-                                                stopOpacity={0}
-                                            />
-                                        </linearGradient>
-                                    </defs>
-                                    <CartesianGrid
-                                        strokeDasharray="3 3"
-                                        stroke="rgba(255,255,255,0.05)"
-                                        vertical={false}
-                                    />
-                                    <XAxis
-                                        dataKey="week"
-                                        stroke="#94A3B8"
-                                        tickFormatter={(w) => `W${w}`}
-                                        axisLine={false}
-                                        tickLine={false}
-                                    />
-                                    <YAxis
-                                        stroke="#94A3B8"
-                                        axisLine={false}
-                                        tickLine={false}
-                                    />
-                                    <Tooltip
-                                        contentStyle={{
-                                            backgroundColor: "#1E293B",
-                                            border: "1px solid rgba(255,255,255,0.1)",
-                                            borderRadius: "8px",
-                                            color: "#fff",
-                                        }}
-                                    />
-                                    <Area
-                                        type="monotone"
-                                        dataKey="fantasy_points_ppr"
-                                        stroke="#3B82F6"
-                                        fillOpacity={1}
-                                        fill="url(#colorPoints)"
-                                        strokeWidth={3}
-                                    />
-                                </AreaChart>
-                            </ResponsiveContainer>
-                        </Box>
-                    </Paper>
-                </Grid>
+                        <TrendingUp color="primary" />
+                        <Typography variant="h6" fontWeight="bold">
+                            Weekly Fantasy Performance
+                        </Typography>
+                    </Box>
+                    <Box sx={{ height: 400, width: "100%" }}>
+                        <ResponsiveContainer width="100%" height="100%">
+                            <AreaChart data={stats}>
+                                <defs>
+                                    <linearGradient
+                                        id="colorPoints"
+                                        x1="0"
+                                        y1="0"
+                                        x2="0"
+                                        y2="1"
+                                    >
+                                        <stop
+                                            offset="5%"
+                                            stopColor="#3B82F6"
+                                            stopOpacity={0.3}
+                                        />
+                                        <stop
+                                            offset="95%"
+                                            stopColor="#3B82F6"
+                                            stopOpacity={0}
+                                        />
+                                    </linearGradient>
+                                </defs>
+                                <CartesianGrid
+                                    strokeDasharray="3 3"
+                                    stroke="rgba(255,255,255,0.05)"
+                                    vertical={false}
+                                />
+                                <XAxis
+                                    dataKey="week"
+                                    stroke="#94A3B8"
+                                    tickFormatter={(w) => `W${w}`}
+                                    axisLine={false}
+                                    tickLine={false}
+                                />
+                                <YAxis
+                                    stroke="#94A3B8"
+                                    axisLine={false}
+                                    tickLine={false}
+                                />
+                                <Tooltip
+                                    contentStyle={{
+                                        backgroundColor: "#1E293B",
+                                        border: "1px solid rgba(255,255,255,0.1)",
+                                        borderRadius: "8px",
+                                        color: "#fff",
+                                    }}
+                                />
+                                <Area
+                                    type="monotone"
+                                    dataKey="fantasy_points_ppr"
+                                    stroke="#3B82F6"
+                                    fillOpacity={1}
+                                    fill="url(#colorPoints)"
+                                    strokeWidth={3}
+                                />
+                            </AreaChart>
+                        </ResponsiveContainer>
+                    </Box>
+                </Paper>
 
-                <Grid item xs={12}>
-                    <Paper
-                        elevation={0}
+                <Paper
+                    elevation={0}
+                    sx={{
+                        p: 3,
+                        bgcolor: "#131B2F",
+                        border: "1px solid rgba(255,255,255,0.05)",
+                        borderRadius: 4,
+                    }}
+                >
+                    <Box
                         sx={{
-                            p: 3,
-                            bgcolor: "#131B2F",
-                            border: "1px solid rgba(255,255,255,0.05)",
-                            borderRadius: 4,
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 1,
+                            mb: 3,
                         }}
                     >
-                        <Box
-                            sx={{
-                                display: "flex",
-                                alignItems: "center",
-                                gap: 1,
-                                mb: 3,
-                            }}
-                        >
-                            <Speed color="success" />
-                            <Typography variant="h6" fontWeight="bold">
-                                Yards Breakdown
-                            </Typography>
-                        </Box>
-                        <Box sx={{ height: 350 }}>
-                            <ResponsiveContainer width="100%" height="100%">
-                                <LineChart data={stats}>
-                                    <CartesianGrid
-                                        strokeDasharray="3 3"
-                                        stroke="rgba(255,255,255,0.05)"
-                                        vertical={false}
-                                    />
-                                    <XAxis
-                                        dataKey="week"
-                                        stroke="#94A3B8"
-                                        tickFormatter={(w) => `W${w}`}
-                                        axisLine={false}
-                                        tickLine={false}
-                                    />
-                                    <YAxis
-                                        stroke="#94A3B8"
-                                        axisLine={false}
-                                        tickLine={false}
-                                    />
-                                    <Tooltip
-                                        contentStyle={{
-                                            backgroundColor: "#1E293B",
-                                            border: "1px solid rgba(255,255,255,0.1)",
-                                            borderRadius: "8px",
-                                            color: "#fff",
-                                        }}
-                                    />
-                                    <Line
-                                        type="monotone"
-                                        dataKey="passing_yards"
-                                        stroke="#3B82F6"
-                                        strokeWidth={2}
-                                        dot={false}
-                                        name="Passing"
-                                    />
-                                    <Line
-                                        type="monotone"
-                                        dataKey="rushing_yards"
-                                        stroke="#10B981"
-                                        strokeWidth={2}
-                                        dot={false}
-                                        name="Rushing"
-                                    />
-                                    <Line
-                                        type="monotone"
-                                        dataKey="receiving_yards"
-                                        stroke="#8B5CF6"
-                                        strokeWidth={2}
-                                        dot={false}
-                                        name="Receiving"
-                                    />
-                                </LineChart>
-                            </ResponsiveContainer>
-                        </Box>
-                    </Paper>
-                </Grid>
-            </Grid>
+                        <Speed color="success" />
+                        <Typography variant="h6" fontWeight="bold">
+                            Yards Breakdown
+                        </Typography>
+                    </Box>
+                    <Box sx={{ height: 400, width: "100%" }}>
+                        <ResponsiveContainer width="100%" height="100%">
+                            <LineChart data={stats}>
+                                <CartesianGrid
+                                    strokeDasharray="3 3"
+                                    stroke="rgba(255,255,255,0.05)"
+                                    vertical={false}
+                                />
+                                <XAxis
+                                    dataKey="week"
+                                    stroke="#94A3B8"
+                                    tickFormatter={(w) => `W${w}`}
+                                    axisLine={false}
+                                    tickLine={false}
+                                />
+                                <YAxis
+                                    stroke="#94A3B8"
+                                    axisLine={false}
+                                    tickLine={false}
+                                />
+                                <Tooltip
+                                    contentStyle={{
+                                        backgroundColor: "#1E293B",
+                                        border: "1px solid rgba(255,255,255,0.1)",
+                                        borderRadius: "8px",
+                                        color: "#fff",
+                                    }}
+                                />
+                                <Line
+                                    type="monotone"
+                                    dataKey="passing_yards"
+                                    stroke="#3B82F6"
+                                    strokeWidth={2}
+                                    dot={false}
+                                    name="Passing"
+                                />
+                                <Line
+                                    type="monotone"
+                                    dataKey="rushing_yards"
+                                    stroke="#10B981"
+                                    strokeWidth={2}
+                                    dot={false}
+                                    name="Rushing"
+                                />
+                                <Line
+                                    type="monotone"
+                                    dataKey="receiving_yards"
+                                    stroke="#8B5CF6"
+                                    strokeWidth={2}
+                                    dot={false}
+                                    name="Receiving"
+                                />
+                            </LineChart>
+                        </ResponsiveContainer>
+                    </Box>
+                </Paper>
+            </Box>
 
             {/* Game Log Table */}
             <Paper
