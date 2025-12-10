@@ -9,6 +9,7 @@ import pandas as pd
 from app import app
 from database import db
 from models import (
+    Coach,
     DefenseStats,
     Game,
     GameLog,
@@ -17,7 +18,9 @@ from models import (
     Player,
     PuntingStats,
     ReceivingStats,
+    Referee,
     RushingStats,
+    Stadium,
     Team,
 )
 from sqlalchemy import text
@@ -95,6 +98,26 @@ def prepare_games(df):
         "surface": "surface",
         "temp": "temp",
         "wind": "wind",
+        # New fields
+        "away_qb_id": "away_qb_id",
+        "home_qb_id": "home_qb_id",
+        "away_coach": "away_coach",
+        "home_coach": "home_coach",
+        "referee": "referee",
+        "away_rest": "away_rest",
+        "home_rest": "home_rest",
+        "div_game": "div_game",
+        "spread_line": "spread_line",
+        "total_line": "total_line",
+        "away_moneyline": "away_moneyline",
+        "home_moneyline": "home_moneyline",
+        "away_spread_odds": "away_spread_odds",
+        "home_spread_odds": "home_spread_odds",
+        "over_odds": "over_odds",
+        "under_odds": "under_odds",
+        "espn": "espn",
+        "pfr": "pfr",
+        "pff": "pff",
     }
     available_cols = [c for c in cols.keys() if c in df.columns]
     return df[available_cols].rename(columns=cols).drop_duplicates(subset=["game_id"])
@@ -114,11 +137,16 @@ def run_etl():
                 "rushing_stats",
                 "passing_stats",
                 "game_logs",
+                "game_logs_3nf",
+                "games_3nf",
                 "player_game_log",
                 "player_stats",
                 "games",
                 "players",
                 "teams",
+                "stadiums",
+                "coaches",
+                "referees",
             ]
             for table in tables_to_drop:
                 conn.execute(text(f"DROP TABLE IF EXISTS {table}"))
@@ -138,23 +166,8 @@ def run_etl():
         print(f"Inserted {len(df_teams_clean)} teams.")
         valid_teams = set(df_teams_clean["team_abbr"])
 
-        # 2. LOAD GAMES
-        print("\n--- 2. LOAD GAMES ---")
-        df_games = ensure_pandas(nfl.load_schedules(seasons=[season_year]))
-        df_games_clean = prepare_games(df_games)
-        df_games_clean = df_games_clean[df_games_clean["home_team"].isin(valid_teams)]
-        df_games_clean = df_games_clean[df_games_clean["away_team"].isin(valid_teams)]
-
-        bulk_insert_from_df(Game, safe_map(df_games_clean))
-        print(f"Inserted {len(df_games_clean)} games.")
-
-        game_map = {}
-        for _, row in df_games_clean.iterrows():
-            game_map[(row["week"], row["home_team"])] = row["game_id"]
-            game_map[(row["week"], row["away_team"])] = row["game_id"]
-
-        # 3. LOAD PLAYERS (Master)
-        print("\n--- 3. LOAD PLAYERS ---")
+        # 2. LOAD PLAYERS (Master) - MOVED BEFORE GAMES
+        print("\n--- 2. LOAD PLAYERS ---")
         df_players = ensure_pandas(nfl.load_players())
 
         # FIX: The column for team is 'latest_team', NOT 'team' or 'team_abbr'
@@ -185,11 +198,102 @@ def run_etl():
         print(f"Inserted {len(df_players_clean)} players.")
         valid_player_ids = set(df_players_clean["player_id"])
 
-        # 4. LOAD STATS
-        print("\n--- 4. LOAD STATS ---")
+        # 3. LOAD STADIUMS
+        print("\n--- 3. LOAD STADIUMS ---")
+        df_games_raw = ensure_pandas(nfl.load_schedules(seasons=[season_year]))
+
+        # Extract unique stadiums
+        stadium_cols = ["stadium", "location", "roof", "surface"]
+        df_stadiums = df_games_raw[stadium_cols].drop_duplicates(subset=["stadium"]).dropna(subset=["stadium"])
+        df_stadiums = df_stadiums.rename(columns={"stadium": "stadium_name"})
+        df_stadiums = df_stadiums.reset_index(drop=True)
+        df_stadiums["stadium_id"] = df_stadiums.index + 1
+
+        bulk_insert_from_df(Stadium, safe_map(df_stadiums))
+        print(f"Inserted {len(df_stadiums)} stadiums.")
+
+        # Create stadium lookup
+        stadium_map = dict(zip(df_stadiums["stadium_name"], df_stadiums["stadium_id"]))
+
+        # 4. LOAD COACHES
+        print("\n--- 4. LOAD COACHES ---")
+        coaches = set()
+        for col in ["away_coach", "home_coach"]:
+            if col in df_games_raw.columns:
+                coaches.update(df_games_raw[col].dropna().unique())
+
+        df_coaches = pd.DataFrame({"coach_name": sorted(list(coaches))})
+        df_coaches = df_coaches.reset_index(drop=True)
+        df_coaches["coach_id"] = df_coaches.index + 1
+
+        bulk_insert_from_df(Coach, safe_map(df_coaches))
+        print(f"Inserted {len(df_coaches)} coaches.")
+
+        # Create coach lookup
+        coach_map = dict(zip(df_coaches["coach_name"], df_coaches["coach_id"]))
+
+        # 5. LOAD REFEREES
+        print("\n--- 5. LOAD REFEREES ---")
+        referees = set()
+        if "referee" in df_games_raw.columns:
+            referees.update(df_games_raw["referee"].dropna().unique())
+
+        df_referees = pd.DataFrame({"referee_name": sorted(list(referees))})
+        df_referees = df_referees.reset_index(drop=True)
+        df_referees["referee_id"] = df_referees.index + 1
+
+        bulk_insert_from_df(Referee, safe_map(df_referees))
+        print(f"Inserted {len(df_referees)} referees.")
+
+        # Create referee lookup
+        referee_map = dict(zip(df_referees["referee_name"], df_referees["referee_id"]))
+
+        # 6. LOAD GAMES
+        print("\n--- 6. LOAD GAMES ---")
+        df_games_clean = prepare_games(df_games_raw)
+        df_games_clean = df_games_clean[df_games_clean["home_team"].isin(valid_teams)]
+        df_games_clean = df_games_clean[df_games_clean["away_team"].isin(valid_teams)]
+
+        # Map stadium names to IDs
+        df_games_clean["stadium_id"] = df_games_clean["stadium"].map(stadium_map)
+
+        # Map coach names to IDs
+        if "away_coach" in df_games_clean.columns:
+            df_games_clean["away_coach_id"] = df_games_clean["away_coach"].map(coach_map)
+            df_games_clean = df_games_clean.drop(columns=["away_coach"])
+
+        if "home_coach" in df_games_clean.columns:
+            df_games_clean["home_coach_id"] = df_games_clean["home_coach"].map(coach_map)
+            df_games_clean = df_games_clean.drop(columns=["home_coach"])
+
+        # Map referee names to IDs
+        if "referee" in df_games_clean.columns:
+            df_games_clean["referee_id"] = df_games_clean["referee"].map(referee_map)
+            df_games_clean = df_games_clean.drop(columns=["referee"])
+
+        # Filter out QB IDs that don't exist in players table
+        if "away_qb_id" in df_games_clean.columns:
+            df_games_clean.loc[~df_games_clean["away_qb_id"].isin(valid_player_ids), "away_qb_id"] = None
+        if "home_qb_id" in df_games_clean.columns:
+            df_games_clean.loc[~df_games_clean["home_qb_id"].isin(valid_player_ids), "home_qb_id"] = None
+
+        # Drop denormalized stadium fields (now in stadiums table)
+        cols_to_drop = ["stadium", "location", "roof", "surface", "weekday", "result", "total"]
+        df_games_clean = df_games_clean.drop(columns=[c for c in cols_to_drop if c in df_games_clean.columns])
+
+        bulk_insert_from_df(Game, safe_map(df_games_clean))
+        print(f"Inserted {len(df_games_clean)} games.")
+
+        game_map = {}
+        for _, row in df_games_clean.iterrows():
+            game_map[(row["week"], row["home_team"])] = row["game_id"]
+            game_map[(row["week"], row["away_team"])] = row["game_id"]
+
+        # 7. LOAD STATS
+        print("\n--- 7. LOAD STATS ---")
         df_stats = ensure_pandas(nfl.load_player_stats(seasons=[season_year]))
 
-        # 4a. Fix Game IDs in Stats
+        # 7a. Fix Game IDs in Stats
         def get_game_id(row):
             # Check 'team' then 'recent_team'
             t = row.get("team") or row.get("recent_team")
@@ -202,7 +306,7 @@ def run_etl():
         df_stats = df_stats[df_stats["player_id"].isin(valid_player_ids)]
         print(f"Valid stats rows: {len(df_stats)}")
 
-        # 4b. Insert Game Logs
+        # 7b. Insert Game Logs
         log_cols = {
             "player_id": "player_id",
             "game_id": "game_id",
@@ -218,7 +322,7 @@ def run_etl():
         bulk_insert_from_df(GameLog, safe_map(df_logs))
         print("Inserted Game Logs.")
 
-        # 4c. Insert Passing Stats
+        # 7c. Insert Passing Stats
         pass_cols = {
             "player_id": "player_id",
             "game_id": "game_id",
@@ -246,7 +350,7 @@ def run_etl():
             inserted = bulk_insert_from_df(PassingStats, safe_map(df_pass))
             print(f"Inserted {inserted} Passing records.")
 
-        # 4d. Insert Rushing Stats
+        # 7d. Insert Rushing Stats
         rush_cols = {
             "player_id": "player_id",
             "game_id": "game_id",
@@ -268,7 +372,7 @@ def run_etl():
             inserted = bulk_insert_from_df(RushingStats, safe_map(df_rush))
             print(f"Inserted {inserted} Rushing records.")
 
-        # 4e. Insert Receiving Stats
+        # 7e. Insert Receiving Stats
         rec_cols = {
             "player_id": "player_id",
             "game_id": "game_id",
@@ -293,7 +397,7 @@ def run_etl():
             inserted = bulk_insert_from_df(ReceivingStats, safe_map(df_rec))
             print(f"Inserted {inserted} Receiving records.")
 
-        # 4f. Insert Defense Stats
+        # 7f. Insert Defense Stats
         def_cols = {
             "player_id": "player_id",
             "game_id": "game_id",
@@ -325,7 +429,7 @@ def run_etl():
         inserted = bulk_insert_from_df(DefenseStats, safe_map(df_def))
         print(f"Inserted {inserted} Defense records.")
 
-        # 4g. Insert Kicking Stats
+        # 7g. Insert Kicking Stats
         kick_cols = {
             "player_id": "player_id",
             "game_id": "game_id",
@@ -349,11 +453,11 @@ def run_etl():
             inserted = bulk_insert_from_df(KickingStats, safe_map(df_kick))
             print(f"Inserted {inserted} Kicking records.")
 
-        # 4h. Insert Punting Stats - Punting data is MISSING from weekly stats file
+        # 7h. Insert Punting Stats - Punting data is MISSING from weekly stats file
         # We can't insert what we don't have.
         print("Skipping Punting Stats (Not available in source dataframe).")
 
-        # 5. UPDATE PLAYER TEAMS
+        # 8. UPDATE PLAYER TEAMS
         # Since we loaded players with 'latest_team' from Master list,
         # let's try to update using the most recent stats to be sure.
         print("Updating player teams from recent stats...")
