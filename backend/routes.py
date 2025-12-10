@@ -84,19 +84,39 @@ def register_routes(app):
         """Get players with optional filters"""
         team = request.args.get("team")
         position = request.args.get("position")
-        limit = request.args.get("limit", 50, type=int)
+        name = request.args.get("name")
+        limit = request.args.get("limit", type=int)  # No default limit
+        offset = request.args.get("offset", type=int)
 
+        # Build base query with filters
         query = Player.query
 
         if team:
             query = query.filter(Player.team == team)
         if position:
             query = query.filter(Player.position == position)
+        if name:
+            # Search by name (case-insensitive partial match)
+            query = query.filter(Player.player_name.ilike(f"%{name}%"))
 
-        players = query.limit(limit).all()
+        # Get total count before pagination
+        total_count = query.count()
 
-        return jsonify(
-            [
+        # Order by player_id descending to show newest players first
+        query = query.order_by(desc(Player.player_id))
+
+        # Apply offset if specified
+        if offset:
+            query = query.offset(offset)
+
+        # Apply limit only if specified
+        if limit:
+            players = query.limit(limit).all()
+        else:
+            players = query.all()
+
+        return jsonify({
+            "players": [
                 {
                     "player_id": p.player_id,
                     "player_name": p.player_name,
@@ -104,8 +124,11 @@ def register_routes(app):
                     "team": p.team,
                 }
                 for p in players
-            ]
-        )
+            ],
+            "total": total_count,
+            "limit": limit or total_count,
+            "offset": offset or 0
+        })
 
     @app.route("/api/games", methods=["GET"])
     def get_games():
@@ -113,6 +136,8 @@ def register_routes(app):
         week = request.args.get("week", type=int)
         team = request.args.get("team")
         season = request.args.get("season", 2024, type=int)
+        limit = request.args.get("limit", type=int)
+        offset = request.args.get("offset", type=int)
 
         query = Game.query.filter(Game.season == season)
 
@@ -121,7 +146,17 @@ def register_routes(app):
         if team:
             query = query.filter((Game.home_team == team) | (Game.away_team == team))
 
-        games = query.order_by(Game.week, Game.gameday).all()
+        query = query.order_by(Game.week, Game.gameday)
+
+        # Apply offset if specified
+        if offset:
+            query = query.offset(offset)
+
+        # Apply limit if specified
+        if limit:
+            games = query.limit(limit).all()
+        else:
+            games = query.all()
 
         return jsonify(
             [
@@ -717,11 +752,31 @@ def register_routes(app):
 
     @app.route("/api/players", methods=["POST"])
     def create_player():
-        """Create a new player"""
+        """Create a new player - auto-generates player_id if not provided"""
         data = request.json
         try:
+            # Auto-generate player_id if not provided
+            player_id = data.get("player_id")
+            if not player_id:
+                # Generate ID format: YY-NNNNNNN (e.g., 24-0000001)
+                from datetime import datetime
+                year_prefix = datetime.now().strftime("%y")
+
+                # Find the highest existing ID with this year prefix
+                max_id = db.session.query(func.max(Player.player_id)).filter(
+                    Player.player_id.like(f"{year_prefix}-%")
+                ).scalar()
+
+                if max_id:
+                    # Extract number and increment
+                    num = int(max_id.split("-")[1]) + 1
+                else:
+                    num = 1
+
+                player_id = f"{year_prefix}-{num:07d}"
+
             player = Player(
-                player_id=data["player_id"],
+                player_id=player_id,
                 player_name=data["player_name"],
                 position=data.get("position"),
                 team=data.get("team"),
@@ -837,9 +892,26 @@ def register_routes(app):
 
     @app.route("/api/games", methods=["POST"])
     def create_game():
-        """Create a new game"""
+        """Create a new game - auto-generates game_id if not provided"""
         data = request.json
         try:
+            # Auto-generate game_id if not provided
+            game_id = data.get("game_id")
+            if not game_id:
+                # Generate ID format: SEASON_WEEK_AWAY_HOME (e.g., 2024_01_KC_BAL)
+                season = data.get("season", 2024)
+                week = data.get("week", 1)
+                away = data.get("away_team", "UNK")
+                home = data.get("home_team", "UNK")
+                game_id = f"{season}_{week:02d}_{away}_{home}"
+
+                # If duplicate exists, add suffix
+                counter = 1
+                original_id = game_id
+                while Game.query.get(game_id):
+                    game_id = f"{original_id}_{counter}"
+                    counter += 1
+
             # Handle stadium - either get existing or create new
             stadium_id = data.get("stadium_id")
             if not stadium_id and data.get("stadium"):
@@ -857,7 +929,7 @@ def register_routes(app):
                 stadium_id = stadium.stadium_id
 
             game = Game(
-                game_id=data["game_id"],
+                game_id=game_id,
                 season=data.get("season"),
                 week=data.get("week"),
                 game_type=data.get("game_type"),
@@ -888,14 +960,31 @@ def register_routes(app):
 
     @app.route("/api/games/<game_id>", methods=["PUT"])
     def update_game(game_id):
-        """Update an existing game"""
+        """Update an existing game - allows updating most fields"""
         game = Game.query.get_or_404(game_id)
         data = request.json
         try:
+            # Allow updating basic game info
+            if "season" in data:
+                game.season = data["season"]
+            if "week" in data:
+                game.week = data["week"]
+            if "game_type" in data:
+                game.game_type = data["game_type"]
+            if "away_team" in data:
+                game.away_team = data["away_team"]
+            if "home_team" in data:
+                game.home_team = data["home_team"]
             if "away_score" in data:
                 game.away_score = data["away_score"]
             if "home_score" in data:
                 game.home_score = data["home_score"]
+            if "gameday" in data:
+                game.gameday = datetime.strptime(data["gameday"], "%Y-%m-%d").date()
+            if "gametime" in data:
+                game.gametime = data["gametime"]
+            if "overtime" in data:
+                game.overtime = data["overtime"]
             if "stadium_id" in data:
                 game.stadium_id = data["stadium_id"]
             if "temp" in data:
