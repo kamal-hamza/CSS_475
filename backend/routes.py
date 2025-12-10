@@ -1597,26 +1597,25 @@ def register_routes(app):
             .all()
         )
 
-        return jsonify(
-            [
-                {
-                    "player_name": r.player_name,
-                    "position": r.position,
-                    "team": r.team,
-                    "total_yards": r.total_yards or 0,
-                    "total_tds": r.total_tds or 0,
-                    "total_carries": r.total_carries or 0,
-                    "games_played": r.games_played or 0,
-                    "yards_per_game": round(float(r.total_yards) / float(r.games_played), 1)
-                    if r.games_played and r.total_yards
-                    else 0,
-                    "yards_per_carry": round(float(r.total_yards) / float(r.total_carries), 1)
-                    if r.total_carries and r.total_yards
-                    else 0,
-                }
-                for r in results
-            ]
-        )
+        result_list = []
+        for r in results:
+            yards = float(r.total_yards) if r.total_yards else 0
+            carries = int(r.total_carries) if r.total_carries else 0
+            games = int(r.games_played) if r.games_played else 0
+
+            result_list.append({
+                "player_name": r.player_name,
+                "position": r.position,
+                "team": r.team,
+                "total_yards": yards,
+                "total_tds": r.total_tds or 0,
+                "total_carries": carries,
+                "games_played": games,
+                "yards_per_game": round(yards / games, 1) if games > 0 else 0,
+                "yards_per_carry": round(yards / carries, 1) if carries > 0 else 0,
+            })
+
+        return jsonify(result_list)
 
     @app.route("/api/queries/receiving-leaders", methods=["GET"])
     def query_receiving_leaders():
@@ -1651,30 +1650,28 @@ def register_routes(app):
             .all()
         )
 
-        return jsonify(
-            [
-                {
-                    "player_name": r.player_name,
-                    "position": r.position,
-                    "team": r.team,
-                    "total_yards": r.total_yards or 0,
-                    "total_receptions": r.total_receptions or 0,
-                    "total_tds": r.total_tds or 0,
-                    "total_targets": r.total_targets or 0,
-                    "games_played": r.games_played or 0,
-                    "yards_per_game": round(float(r.total_yards) / float(r.games_played), 1)
-                    if r.games_played and r.total_yards
-                    else 0,
-                    "yards_per_catch": round(float(r.total_yards) / float(r.total_receptions), 1)
-                    if r.total_receptions and r.total_yards
-                    else 0,
-                    "catch_rate": round(float(r.total_receptions) / float(r.total_targets) * 100, 1)
-                    if r.total_targets and r.total_receptions
-                    else 0,
-                }
-                for r in results
-            ]
-        )
+        result_list = []
+        for r in results:
+            yards = float(r.total_yards) if r.total_yards else 0
+            receptions = int(r.total_receptions) if r.total_receptions else 0
+            targets = int(r.total_targets) if r.total_targets else 0
+            games = int(r.games_played) if r.games_played else 0
+
+            result_list.append({
+                "player_name": r.player_name,
+                "position": r.position,
+                "team": r.team,
+                "total_yards": yards,
+                "total_receptions": receptions,
+                "total_tds": r.total_tds or 0,
+                "total_targets": targets,
+                "games_played": games,
+                "yards_per_game": round(yards / games, 1) if games > 0 else 0,
+                "yards_per_catch": round(yards / receptions, 1) if receptions > 0 else 0,
+                "catch_rate": round(receptions / targets * 100, 1) if targets > 0 else 0,
+            })
+
+        return jsonify(result_list)
 
     @app.route("/api/queries/team-stats", methods=["GET"])
     def query_team_stats():
@@ -1732,33 +1729,32 @@ def register_routes(app):
             .scalar()
         )
 
+        num_games = int(games) if games else 0
+        pass_yards = float(pass_stats.total_pass_yards) if pass_stats.total_pass_yards else 0
+        rush_yards = float(rush_stats.total_rush_yards) if rush_stats.total_rush_yards else 0
+        rec_yards = float(rec_stats.total_rec_yards) if rec_stats.total_rec_yards else 0
+
         return jsonify(
             {
                 "team": team,
                 "season": season,
-                "games_played": games or 0,
+                "games_played": num_games,
                 "passing": {
-                    "total_yards": pass_stats.total_pass_yards or 0,
+                    "total_yards": pass_yards,
                     "total_tds": pass_stats.total_pass_tds or 0,
                     "total_ints": pass_stats.total_ints or 0,
-                    "yards_per_game": round(float(pass_stats.total_pass_yards) / float(games), 1)
-                    if games and pass_stats.total_pass_yards
-                    else 0,
+                    "yards_per_game": round(pass_yards / num_games, 1) if num_games > 0 else 0,
                 },
                 "rushing": {
-                    "total_yards": rush_stats.total_rush_yards or 0,
+                    "total_yards": rush_yards,
                     "total_tds": rush_stats.total_rush_tds or 0,
-                    "yards_per_game": round(float(rush_stats.total_rush_yards) / float(games), 1)
-                    if games and rush_stats.total_rush_yards
-                    else 0,
+                    "yards_per_game": round(rush_yards / num_games, 1) if num_games > 0 else 0,
                 },
                 "receiving": {
-                    "total_yards": rec_stats.total_rec_yards or 0,
+                    "total_yards": rec_yards,
                     "total_tds": rec_stats.total_rec_tds or 0,
                     "total_receptions": rec_stats.total_receptions or 0,
-                    "yards_per_game": round(float(rec_stats.total_rec_yards) / float(games), 1)
-                    if games and rec_stats.total_rec_yards
-                    else 0,
+                    "yards_per_game": round(rec_yards / num_games, 1) if num_games > 0 else 0,
                 },
             }
         )
