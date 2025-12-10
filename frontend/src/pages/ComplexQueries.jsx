@@ -46,6 +46,11 @@ const ComplexQueries = () => {
         player_id: "00-0033873", // Patrick Mahomes as default
     });
 
+    // Auto-run the first simple query on page load
+    useEffect(() => {
+        executeQuery("allTeams", "/api/queries/all-teams", {});
+    }, []);
+
     const executeQuery = async (queryType, endpoint, queryParams = {}) => {
         setLoading({ ...loading, [queryType]: true });
         try {
@@ -138,9 +143,10 @@ const ComplexQueries = () => {
 
                     <Button
                         variant="contained"
+                        color="primary"
                         startIcon={
                             loading[queryType] ? (
-                                <CircularProgress size={20} />
+                                <CircularProgress size={20} color="inherit" />
                             ) : (
                                 <SearchIcon />
                             )
@@ -151,7 +157,7 @@ const ComplexQueries = () => {
                         disabled={loading[queryType]}
                         sx={{ mb: 2 }}
                     >
-                        Execute Query
+                        {loading[queryType] ? "Loading..." : "Run Query"}
                     </Button>
 
                     {/* Results */}
@@ -160,6 +166,175 @@ const ComplexQueries = () => {
             </AccordionDetails>
         </Accordion>
     );
+
+    // Render functions for each query type
+    const renderAllTeams = (data) => {
+        if (data.error) {
+            return <Alert severity="error">{data.error}</Alert>;
+        }
+        if (!data || data.length === 0) {
+            return <Alert severity="info">No results found</Alert>;
+        }
+
+        return (
+            <Box>
+                <Alert severity="success" sx={{ mb: 2 }}>
+                    Found {data.length} NFL teams
+                </Alert>
+                <Grid container spacing={2}>
+                    {data.map((team, idx) => (
+                        <Grid item xs={12} sm={6} md={4} lg={3} key={idx}>
+                            <Card variant="outlined">
+                                <CardContent>
+                                    <Typography variant="h6" gutterBottom>
+                                        {team.abbr}
+                                    </Typography>
+                                    <Typography
+                                        variant="body2"
+                                        color="text.secondary"
+                                    >
+                                        {team.name}
+                                    </Typography>
+                                    <Box sx={{ mt: 1 }}>
+                                        <Chip
+                                            label={team.conference}
+                                            size="small"
+                                            sx={{ mr: 0.5 }}
+                                        />
+                                        <Chip
+                                            label={team.division}
+                                            size="small"
+                                            color="primary"
+                                        />
+                                    </Box>
+                                </CardContent>
+                            </Card>
+                        </Grid>
+                    ))}
+                </Grid>
+            </Box>
+        );
+    };
+
+    const renderPlayersByTeam = (data) => {
+        if (data.error) {
+            return <Alert severity="error">{data.error}</Alert>;
+        }
+        if (!data || data.length === 0) {
+            return (
+                <Alert severity="info">No players found for this team</Alert>
+            );
+        }
+
+        return (
+            <Box>
+                <Alert severity="success" sx={{ mb: 2 }}>
+                    Found {data.length} players on this team
+                </Alert>
+                <TableContainer component={Paper}>
+                    <Table size="small">
+                        <TableHead>
+                            <TableRow>
+                                <TableCell>
+                                    <strong>Player Name</strong>
+                                </TableCell>
+                                <TableCell>
+                                    <strong>Position</strong>
+                                </TableCell>
+                                <TableCell>
+                                    <strong>Team</strong>
+                                </TableCell>
+                            </TableRow>
+                        </TableHead>
+                        <TableBody>
+                            {data.map((row, idx) => (
+                                <TableRow key={idx}>
+                                    <TableCell>{row.player_name}</TableCell>
+                                    <TableCell>
+                                        <Chip
+                                            label={row.position}
+                                            size="small"
+                                            color="primary"
+                                        />
+                                    </TableCell>
+                                    <TableCell>{row.team}</TableCell>
+                                </TableRow>
+                            ))}
+                        </TableBody>
+                    </Table>
+                </TableContainer>
+            </Box>
+        );
+    };
+
+    const renderGamesByWeek = (data) => {
+        if (data.error) {
+            return <Alert severity="error">{data.error}</Alert>;
+        }
+        if (!data || data.length === 0) {
+            return <Alert severity="info">No games found for this week</Alert>;
+        }
+
+        return (
+            <Box>
+                <Alert severity="success" sx={{ mb: 2 }}>
+                    Found {data.length} games
+                </Alert>
+                <TableContainer component={Paper}>
+                    <Table>
+                        <TableHead>
+                            <TableRow>
+                                <TableCell>
+                                    <strong>Away Team</strong>
+                                </TableCell>
+                                <TableCell align="center">
+                                    <strong>@</strong>
+                                </TableCell>
+                                <TableCell>
+                                    <strong>Home Team</strong>
+                                </TableCell>
+                                <TableCell align="center">
+                                    <strong>Score</strong>
+                                </TableCell>
+                                <TableCell>
+                                    <strong>Date</strong>
+                                </TableCell>
+                            </TableRow>
+                        </TableHead>
+                        <TableBody>
+                            {data.map((game, idx) => (
+                                <TableRow key={idx}>
+                                    <TableCell>
+                                        <Chip label={game.away_team} />
+                                    </TableCell>
+                                    <TableCell align="center">@</TableCell>
+                                    <TableCell>
+                                        <Chip
+                                            label={game.home_team}
+                                            color="primary"
+                                        />
+                                    </TableCell>
+                                    <TableCell align="center">
+                                        <strong>
+                                            {game.away_score} -{" "}
+                                            {game.home_score}
+                                        </strong>
+                                    </TableCell>
+                                    <TableCell>
+                                        {game.gameday
+                                            ? new Date(
+                                                  game.gameday,
+                                              ).toLocaleDateString()
+                                            : "TBD"}
+                                    </TableCell>
+                                </TableRow>
+                            ))}
+                        </TableBody>
+                    </Table>
+                </TableContainer>
+            </Box>
+        );
+    };
 
     const renderTopScorers = (data) => {
         if (data.error) {
@@ -607,19 +782,109 @@ const ComplexQueries = () => {
                     component="h1"
                     sx={{ fontWeight: "bold", mb: 1 }}
                 >
-                    Database Queries
+                    SQL Query Demonstrations
                 </Typography>
                 <Typography variant="h6" color="text.secondary">
-                    Simple SQL queries demonstrating our NFL data
+                    Interactive SQL queries showing our NFL database in action
                 </Typography>
+                <Alert severity="info" sx={{ mt: 2 }}>
+                    Click "Run Query" on any accordion below to see the results.
+                    You can modify the parameters before running!
+                </Alert>
             </Box>
 
             <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                {/* BEGINNER QUERIES */}
+                <Typography
+                    variant="h5"
+                    sx={{ mt: 2, mb: 1, fontWeight: "bold" }}
+                >
+                    🟢 Beginner Queries - Start Here!
+                </Typography>
+
+                {/* Query 0.1: All Teams */}
+                {renderQueryCard(
+                    "📋 All NFL Teams",
+                    "The simplest query: SELECT all teams from the database",
+                    <PeopleIcon color="success" />,
+                    "allTeams",
+                    "/api/queries/all-teams",
+                    {},
+                    `SELECT
+    team_abbr,
+    team_name,
+    team_conference,
+    team_division
+FROM teams
+ORDER BY team_name`,
+                    [],
+                    renderAllTeams,
+                )}
+
+                {/* Query 0.2: Players by Team */}
+                {renderQueryCard(
+                    "👥 Players on a Team",
+                    "Simple SELECT with WHERE clause: Find all players on a specific team",
+                    <PeopleIcon color="success" />,
+                    "playersByTeam",
+                    "/api/queries/players-by-team",
+                    { team: params.team },
+                    `SELECT
+    player_name,
+    position,
+    team
+FROM players
+WHERE team = '${params.team}'
+ORDER BY position, player_name`,
+                    [
+                        {
+                            key: "team",
+                            label: "Team Abbreviation (e.g., KC, BUF)",
+                        },
+                    ],
+                    renderPlayersByTeam,
+                )}
+
+                {/* Query 0.3: Games by Week */}
+                {renderQueryCard(
+                    "🏈 Games in a Week",
+                    "SELECT with multiple WHERE conditions: Show all games for a specific week and season",
+                    <FootballIcon color="success" />,
+                    "gamesByWeek",
+                    "/api/queries/games-by-week",
+                    { week: params.week, season: params.season },
+                    `SELECT
+    game_id,
+    home_team,
+    away_team,
+    home_score,
+    away_score,
+    week,
+    gameday
+FROM games
+WHERE week = ${params.week}
+    AND season = ${params.season}
+ORDER BY gameday`,
+                    [
+                        { key: "season", label: "Season" },
+                        { key: "week", label: "Week" },
+                    ],
+                    renderGamesByWeek,
+                )}
+
+                {/* INTERMEDIATE QUERIES */}
+                <Typography
+                    variant="h5"
+                    sx={{ mt: 4, mb: 1, fontWeight: "bold" }}
+                >
+                    🟡 Intermediate Queries - JOINs & Aggregates
+                </Typography>
+
                 {/* Query 1: Top Fantasy Scorers */}
                 {renderQueryCard(
-                    "Top Fantasy Scorers by Week",
-                    "Simple SELECT with JOIN and ORDER BY to find the highest fantasy point scorers for a specific week",
-                    <TrophyIcon color="primary" />,
+                    "🏆 Top Fantasy Scorers by Week",
+                    "JOIN two tables: Combine player info with their game performance",
+                    <TrophyIcon color="warning" />,
                     "topScorers",
                     "/api/queries/top-scorers",
                     {
@@ -635,23 +900,25 @@ const ComplexQueries = () => {
     gl.opponent,
     gl.fantasy_points_ppr
 FROM players p
-JOIN game_logs gl ON p.player_id = gl.player_id
-WHERE gl.season = ? AND gl.week = ?
+JOIN game_logs gl
+    ON p.player_id = gl.player_id
+WHERE gl.season = ${params.season}
+    AND gl.week = ${params.week}
 ORDER BY gl.fantasy_points_ppr DESC
-LIMIT ?`,
+LIMIT ${params.limit}`,
                     [
                         { key: "season", label: "Season" },
                         { key: "week", label: "Week" },
-                        { key: "limit", label: "Limit" },
+                        { key: "limit", label: "Number of Results" },
                     ],
                     renderTopScorers,
                 )}
 
                 {/* Query 2: QB Passing Leaders */}
                 {renderQueryCard(
-                    "QB Passing Yard Leaders",
-                    "Multi-table JOIN to find QB performances with passing stats and game details",
-                    <TrendingUpIcon color="success" />,
+                    "🎯 QB Passing Yard Leaders",
+                    "Multiple JOINs: Connect 3 tables (players, game_logs, passing_stats) to find top QB games",
+                    <TrendingUpIcon color="warning" />,
                     "qbLeaders",
                     "/api/queries/qb-passing-leaders",
                     {
@@ -670,27 +937,37 @@ LIMIT ?`,
     ps.completions,
     ps.attempts
 FROM players p
-JOIN game_logs gl ON p.player_id = gl.player_id
-JOIN passing_stats ps ON ps.player_id = p.player_id
+JOIN game_logs gl
+    ON p.player_id = gl.player_id
+JOIN passing_stats ps
+    ON ps.player_id = p.player_id
     AND ps.game_id = gl.game_id
-WHERE gl.season = ?
+WHERE gl.season = ${params.season}
     AND p.position = 'QB'
-    AND ps.passing_yards >= ?
+    AND ps.passing_yards >= ${params.min_yards}
 ORDER BY ps.passing_yards DESC
-LIMIT ?`,
+LIMIT ${params.limit}`,
                     [
                         { key: "season", label: "Season" },
-                        { key: "min_yards", label: "Min Passing Yards" },
-                        { key: "limit", label: "Limit" },
+                        { key: "min_yards", label: "Minimum Passing Yards" },
+                        { key: "limit", label: "Number of Results" },
                     ],
                     renderQBLeaders,
                 )}
 
+                {/* ADVANCED QUERIES */}
+                <Typography
+                    variant="h5"
+                    sx={{ mt: 4, mb: 1, fontWeight: "bold" }}
+                >
+                    🔴 Advanced Queries - Aggregates & Calculations
+                </Typography>
+
                 {/* Query 3: Rushing Leaders */}
                 {renderQueryCard(
-                    "Season Rushing Leaders",
-                    "GROUP BY query with aggregate functions (SUM, COUNT) to calculate season totals",
-                    <SpeedIcon color="warning" />,
+                    "💨 Season Rushing Leaders",
+                    "GROUP BY with aggregate functions: Calculate season totals using SUM() and COUNT()",
+                    <SpeedIcon color="error" />,
                     "rushingLeaders",
                     "/api/queries/rushing-leaders",
                     { season: params.season, limit: params.limit },
@@ -703,24 +980,26 @@ LIMIT ?`,
     SUM(rs.carries) as total_carries,
     COUNT(gl.week) as games_played
 FROM players p
-JOIN game_logs gl ON p.player_id = gl.player_id
-JOIN rushing_stats rs ON rs.player_id = p.player_id
+JOIN game_logs gl
+    ON p.player_id = gl.player_id
+JOIN rushing_stats rs
+    ON rs.player_id = p.player_id
     AND rs.game_id = gl.game_id
-WHERE gl.season = ?
+WHERE gl.season = ${params.season}
 GROUP BY p.player_id, p.player_name, p.position, p.team
 ORDER BY total_yards DESC
-LIMIT ?`,
+LIMIT ${params.limit}`,
                     [
                         { key: "season", label: "Season" },
-                        { key: "limit", label: "Limit" },
+                        { key: "limit", label: "Number of Results" },
                     ],
                     renderRushingLeaders,
                 )}
 
                 {/* Query 4: Receiving Leaders */}
                 {renderQueryCard(
-                    "Season Receiving Leaders",
-                    "GROUP BY with multiple aggregate calculations for receiving stats",
+                    "🎣 Season Receiving Leaders",
+                    "Complex aggregation: Multiple SUM() calculations grouped by player",
                     <PeopleIcon color="error" />,
                     "receivingLeaders",
                     "/api/queries/receiving-leaders",
@@ -741,19 +1020,19 @@ JOIN receiving_stats rec ON rec.player_id = p.player_id
 WHERE gl.season = ?
 GROUP BY p.player_id, p.player_name, p.position, p.team
 ORDER BY total_yards DESC
-LIMIT ?`,
+LIMIT ${params.limit}`,
                     [
                         { key: "season", label: "Season" },
-                        { key: "limit", label: "Limit" },
+                        { key: "limit", label: "Number of Results" },
                     ],
                     renderReceivingLeaders,
                 )}
 
                 {/* Query 5: Team Aggregate Stats */}
                 {renderQueryCard(
-                    "Team Offensive Statistics",
-                    "Multiple aggregate queries combined to show complete team offensive stats",
-                    <BarChartIcon color="info" />,
+                    "📊 Team Offensive Statistics",
+                    "Multiple queries combined: Separate aggregations for passing, rushing, and receiving stats",
+                    <BarChartIcon color="error" />,
                     "teamStats",
                     "/api/queries/team-stats",
                     { season: params.season, team: params.team },
@@ -791,9 +1070,9 @@ WHERE gl.season = ? AND gl.team = ?`,
 
                 {/* Query 6: Player Game Log */}
                 {renderQueryCard(
-                    "Player Game Log",
-                    "Simple JOIN to retrieve a player's complete game-by-game performance log",
-                    <FootballIcon color="secondary" />,
+                    "📅 Player Game-by-Game Log",
+                    "Detailed JOIN: Show a player's week-by-week performance throughout the season",
+                    <FootballIcon color="error" />,
                     "playerGameLog",
                     "/api/queries/player-game-log",
                     { player_id: params.player_id, season: params.season },

@@ -1379,6 +1379,80 @@ def register_routes(app):
     # Simple Query Demonstration Endpoints
     # ========================================
 
+    @app.route("/api/queries/all-teams", methods=["GET"])
+    def query_all_teams():
+        """Very simple query: List all NFL teams"""
+        results = db.session.query(
+            Team.team_abbr,
+            Team.team_name,
+            Team.team_conference,
+            Team.team_division
+        ).order_by(Team.team_name).all()
+
+        return jsonify([
+            {
+                "abbr": r.team_abbr,
+                "name": r.team_name,
+                "conference": r.team_conference,
+                "division": r.team_division
+            }
+            for r in results
+        ])
+
+    @app.route("/api/queries/players-by-team", methods=["GET"])
+    def query_players_by_team():
+        """Simple query: List players from a specific team"""
+        team = request.args.get("team", "KC")
+
+        results = db.session.query(
+            Player.player_name,
+            Player.position,
+            Player.team
+        ).filter(
+            Player.team == team
+        ).order_by(Player.position, Player.player_name).all()
+
+        return jsonify([
+            {
+                "player_name": r.player_name,
+                "position": r.position,
+                "team": r.team
+            }
+            for r in results
+        ])
+
+    @app.route("/api/queries/games-by-week", methods=["GET"])
+    def query_games_by_week():
+        """Simple query: Show all games for a specific week"""
+        week = request.args.get("week", 1, type=int)
+        season = request.args.get("season", 2024, type=int)
+
+        results = db.session.query(
+            Game.game_id,
+            Game.home_team,
+            Game.away_team,
+            Game.home_score,
+            Game.away_score,
+            Game.week,
+            Game.gameday
+        ).filter(
+            Game.week == week,
+            Game.season == season
+        ).order_by(Game.gameday).all()
+
+        return jsonify([
+            {
+                "game_id": r.game_id,
+                "home_team": r.home_team,
+                "away_team": r.away_team,
+                "home_score": r.home_score or 0,
+                "away_score": r.away_score or 0,
+                "week": r.week,
+                "gameday": r.gameday.isoformat() if r.gameday else None
+            }
+            for r in results
+        ])
+
     @app.route("/api/queries/top-scorers", methods=["GET"])
     def query_top_scorers():
         """Simple query: Top fantasy point scorers for a given week"""
