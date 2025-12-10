@@ -18,13 +18,14 @@ import { searchPlayers } from "../services/api";
 const Navbar = () => {
     const [searchQuery, setSearchQuery] = useState("");
     const [searchResults, setSearchResults] = useState([]);
+    const [inputValue, setInputValue] = useState("");
     const navigate = useNavigate();
 
     useEffect(() => {
         const delayDebounceFn = setTimeout(async () => {
-            if (searchQuery.length > 2) {
+            if (inputValue.length > 2) {
                 try {
-                    const results = await searchPlayers(searchQuery);
+                    const results = await searchPlayers(inputValue);
                     setSearchResults(results);
                 } catch (error) {
                     console.error("Search error:", error);
@@ -35,20 +36,20 @@ const Navbar = () => {
         }, 300);
 
         return () => clearTimeout(delayDebounceFn);
-    }, [searchQuery]);
+    }, [inputValue]);
 
     const handlePlayerSelect = (event, value) => {
-        if (value) {
+        if (value && typeof value === "object" && value.player_id) {
             navigate(`/player/${value.player_id}`);
-            setSearchQuery("");
+            setInputValue("");
             setSearchResults([]);
         }
     };
 
     const handleSearchKeyPress = (event) => {
-        if (event.key === "Enter" && searchQuery.length >= 2) {
-            navigate(`/search?q=${encodeURIComponent(searchQuery)}`);
-            setSearchQuery("");
+        if (event.key === "Enter" && inputValue.length >= 2) {
+            navigate(`/search?q=${encodeURIComponent(inputValue)}`);
+            setInputValue("");
             setSearchResults([]);
         }
     };
@@ -131,8 +132,13 @@ const Navbar = () => {
                     <Box sx={{ flexGrow: 0, width: 300 }}>
                         <Autocomplete
                             freeSolo
+                            value={null}
+                            inputValue={inputValue}
+                            onInputChange={(event, newInputValue) => {
+                                setInputValue(newInputValue);
+                            }}
                             options={
-                                searchQuery.length >= 2 &&
+                                inputValue.length >= 2 &&
                                 searchResults.length > 0
                                     ? [
                                           ...searchResults,
@@ -146,16 +152,22 @@ const Navbar = () => {
                                     : searchResults
                             }
                             getOptionLabel={(option) =>
-                                option.player_name || ""
+                                typeof option === "string"
+                                    ? option
+                                    : option.player_name || ""
                             }
                             onChange={(event, value) => {
-                                if (value && value.isAction) {
+                                if (
+                                    value &&
+                                    typeof value === "object" &&
+                                    value.isAction
+                                ) {
                                     navigate(
-                                        `/search?q=${encodeURIComponent(searchQuery)}`,
+                                        `/search?q=${encodeURIComponent(inputValue)}`,
                                     );
-                                    setSearchQuery("");
+                                    setInputValue("");
                                     setSearchResults([]);
-                                } else {
+                                } else if (value && typeof value === "object") {
                                     handlePlayerSelect(event, value);
                                 }
                             }}
@@ -165,9 +177,6 @@ const Navbar = () => {
                                     placeholder="Search Players..."
                                     variant="outlined"
                                     size="small"
-                                    onChange={(e) =>
-                                        setSearchQuery(e.target.value)
-                                    }
                                     onKeyPress={handleSearchKeyPress}
                                     sx={{
                                         backgroundColor:

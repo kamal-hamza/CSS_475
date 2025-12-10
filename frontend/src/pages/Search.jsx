@@ -33,10 +33,14 @@ const Search = () => {
 
     // State
     const [searchQuery, setSearchQuery] = useState(searchParams.get("q") || "");
-    const [position, setPosition] = useState(searchParams.get("position") || "");
+    const [position, setPosition] = useState(
+        searchParams.get("position") || "",
+    );
     const [team, setTeam] = useState(searchParams.get("team") || "");
     const [sortBy, setSortBy] = useState(searchParams.get("sort_by") || "name");
-    const [sortOrder, setSortOrder] = useState(searchParams.get("sort_order") || "asc");
+    const [sortOrder, setSortOrder] = useState(
+        searchParams.get("sort_order") || "asc",
+    );
     const [page, setPage] = useState(parseInt(searchParams.get("page")) || 1);
     const [perPage] = useState(20);
 
@@ -126,7 +130,9 @@ const Search = () => {
         window.scrollTo({ top: 0, behavior: "smooth" });
     };
 
-    const activeFiltersCount = [searchQuery, position, team].filter(Boolean).length;
+    const activeFiltersCount = [searchQuery, position, team].filter(
+        Boolean,
+    ).length;
 
     return (
         <Container maxWidth="xl" sx={{ py: 4 }}>
@@ -161,7 +167,9 @@ const Search = () => {
                             InputProps={{
                                 startAdornment: (
                                     <InputAdornment position="start">
-                                        <SearchIcon sx={{ color: "text.secondary" }} />
+                                        <SearchIcon
+                                            sx={{ color: "text.secondary" }}
+                                        />
                                     </InputAdornment>
                                 ),
                                 endAdornment: searchQuery && (
@@ -189,8 +197,12 @@ const Search = () => {
                     {/* Position Filter */}
                     <Grid item xs={12} sm={6} md={2}>
                         <FormControl fullWidth>
-                            <InputLabel>Position</InputLabel>
+                            <InputLabel id="position-label">
+                                Position
+                            </InputLabel>
                             <Select
+                                labelId="position-label"
+                                id="position-select"
                                 value={position}
                                 label="Position"
                                 onChange={(e) => {
@@ -216,8 +228,10 @@ const Search = () => {
                     {/* Team Filter */}
                     <Grid item xs={12} sm={6} md={2}>
                         <FormControl fullWidth>
-                            <InputLabel>Team</InputLabel>
+                            <InputLabel id="team-label">Team</InputLabel>
                             <Select
+                                labelId="team-label"
+                                id="team-select"
                                 value={team}
                                 label="Team"
                                 onChange={(e) => {
@@ -232,7 +246,10 @@ const Search = () => {
                             >
                                 <MenuItem value="">All Teams</MenuItem>
                                 {teams.map((t) => (
-                                    <MenuItem key={t.team_abbr} value={t.team_abbr}>
+                                    <MenuItem
+                                        key={t.team_abbr}
+                                        value={t.team_abbr}
+                                    >
                                         {t.team_abbr} - {t.team_name}
                                     </MenuItem>
                                 ))}
@@ -243,8 +260,10 @@ const Search = () => {
                     {/* Sort By */}
                     <Grid item xs={12} sm={6} md={2}>
                         <FormControl fullWidth>
-                            <InputLabel>Sort By</InputLabel>
+                            <InputLabel id="sortby-label">Sort By</InputLabel>
                             <Select
+                                labelId="sortby-label"
+                                id="sortby-select"
                                 value={sortBy}
                                 label="Sort By"
                                 onChange={(e) => setSortBy(e.target.value)}
@@ -264,8 +283,10 @@ const Search = () => {
                     {/* Sort Order */}
                     <Grid item xs={12} sm={6} md={2}>
                         <FormControl fullWidth>
-                            <InputLabel>Order</InputLabel>
+                            <InputLabel id="order-label">Order</InputLabel>
                             <Select
+                                labelId="order-label"
+                                id="order-select"
                                 value={sortOrder}
                                 label="Order"
                                 onChange={(e) => setSortOrder(e.target.value)}
@@ -284,9 +305,23 @@ const Search = () => {
 
                 {/* Active Filters & Clear */}
                 {activeFiltersCount > 0 && (
-                    <Box sx={{ mt: 2, display: "flex", alignItems: "center", gap: 1, flexWrap: "wrap" }}>
+                    <Box
+                        sx={{
+                            mt: 2,
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 1,
+                            flexWrap: "wrap",
+                        }}
+                    >
                         <Typography variant="caption" color="text.secondary">
-                            <FilterListIcon sx={{ fontSize: 16, verticalAlign: "middle", mr: 0.5 }} />
+                            <FilterListIcon
+                                sx={{
+                                    fontSize: 16,
+                                    verticalAlign: "middle",
+                                    mr: 0.5,
+                                }}
+                            />
                             Active filters:
                         </Typography>
                         {searchQuery && (
@@ -338,10 +373,18 @@ const Search = () => {
             ) : players.length > 0 ? (
                 <>
                     {/* Results Header */}
-                    <Box sx={{ mb: 3, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <Box
+                        sx={{
+                            mb: 3,
+                            display: "flex",
+                            justifyContent: "space-between",
+                            alignItems: "center",
+                        }}
+                    >
                         <Typography variant="body2" color="text.secondary">
-                            Showing {((page - 1) * perPage) + 1} - {Math.min(page * perPage, pagination?.total || 0)} of{" "}
-                            {pagination?.total || 0} players
+                            Showing {(page - 1) * perPage + 1} -{" "}
+                            {Math.min(page * perPage, pagination?.total || 0)}{" "}
+                            of {pagination?.total || 0} players
                         </Typography>
                         {pagination && pagination.pages > 1 && (
                             <Pagination
@@ -359,7 +402,14 @@ const Search = () => {
                     {/* Player Cards */}
                     <Grid container spacing={2}>
                         {players.map((player) => (
-                            <Grid item xs={12} sm={6} md={4} lg={3} key={player.player_id}>
+                            <Grid
+                                item
+                                xs={12}
+                                sm={6}
+                                md={4}
+                                lg={3}
+                                key={player.player_id}
+                            >
                                 <Card
                                     elevation={0}
                                     sx={{
@@ -370,13 +420,23 @@ const Search = () => {
                                         "&:hover": {
                                             borderColor: "primary.main",
                                             transform: "translateY(-2px)",
-                                            boxShadow: "0 8px 16px rgba(59, 130, 246, 0.2)",
+                                            boxShadow:
+                                                "0 8px 16px rgba(59, 130, 246, 0.2)",
                                         },
                                     }}
-                                    onClick={() => handlePlayerClick(player.player_id)}
+                                    onClick={() =>
+                                        handlePlayerClick(player.player_id)
+                                    }
                                 >
                                     <CardContent>
-                                        <Box sx={{ display: "flex", alignItems: "center", gap: 2, mb: 2 }}>
+                                        <Box
+                                            sx={{
+                                                display: "flex",
+                                                alignItems: "center",
+                                                gap: 2,
+                                                mb: 2,
+                                            }}
+                                        >
                                             <Avatar
                                                 sx={{
                                                     bgcolor: "primary.main",
@@ -394,18 +454,30 @@ const Search = () => {
                                                 >
                                                     {player.player_name}
                                                 </Typography>
-                                                <Box sx={{ display: "flex", gap: 1, mt: 0.5 }}>
+                                                <Box
+                                                    sx={{
+                                                        display: "flex",
+                                                        gap: 1,
+                                                        mt: 0.5,
+                                                    }}
+                                                >
                                                     <Chip
                                                         label={player.position}
                                                         size="small"
                                                         color="primary"
-                                                        sx={{ height: 20, fontSize: "0.7rem" }}
+                                                        sx={{
+                                                            height: 20,
+                                                            fontSize: "0.7rem",
+                                                        }}
                                                     />
                                                     <Chip
                                                         label={player.team}
                                                         size="small"
                                                         variant="outlined"
-                                                        sx={{ height: 20, fontSize: "0.7rem" }}
+                                                        sx={{
+                                                            height: 20,
+                                                            fontSize: "0.7rem",
+                                                        }}
                                                     />
                                                 </Box>
                                             </Box>
@@ -418,7 +490,13 @@ const Search = () => {
 
                     {/* Bottom Pagination */}
                     {pagination && pagination.pages > 1 && (
-                        <Box sx={{ mt: 4, display: "flex", justifyContent: "center" }}>
+                        <Box
+                            sx={{
+                                mt: 4,
+                                display: "flex",
+                                justifyContent: "center",
+                            }}
+                        >
                             <Pagination
                                 count={pagination.pages}
                                 page={page}
@@ -443,14 +521,24 @@ const Search = () => {
                         borderRadius: 4,
                     }}
                 >
-                    <SearchIcon sx={{ fontSize: 64, color: "text.secondary", mb: 2 }} />
-                    <Typography variant="h6" color="text.secondary" gutterBottom>
+                    <SearchIcon
+                        sx={{ fontSize: 64, color: "text.secondary", mb: 2 }}
+                    />
+                    <Typography
+                        variant="h6"
+                        color="text.secondary"
+                        gutterBottom
+                    >
                         {searchQuery.length < 2 && !position && !team
                             ? "Enter a search term or select filters to find players"
                             : "No players found"}
                     </Typography>
                     {(searchQuery.length >= 2 || position || team) && (
-                        <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                        <Typography
+                            variant="body2"
+                            color="text.secondary"
+                            sx={{ mt: 1 }}
+                        >
                             Try adjusting your search or filters
                         </Typography>
                     )}
