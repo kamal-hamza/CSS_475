@@ -1607,10 +1607,10 @@ def register_routes(app):
                     "total_tds": r.total_tds or 0,
                     "total_carries": r.total_carries or 0,
                     "games_played": r.games_played or 0,
-                    "yards_per_game": round(r.total_yards / r.games_played, 1)
+                    "yards_per_game": round(float(r.total_yards) / float(r.games_played), 1)
                     if r.games_played and r.total_yards
                     else 0,
-                    "yards_per_carry": round(r.total_yards / r.total_carries, 1)
+                    "yards_per_carry": round(float(r.total_yards) / float(r.total_carries), 1)
                     if r.total_carries and r.total_yards
                     else 0,
                 }
@@ -1662,13 +1662,13 @@ def register_routes(app):
                     "total_tds": r.total_tds or 0,
                     "total_targets": r.total_targets or 0,
                     "games_played": r.games_played or 0,
-                    "yards_per_game": round(r.total_yards / r.games_played, 1)
+                    "yards_per_game": round(float(r.total_yards) / float(r.games_played), 1)
                     if r.games_played and r.total_yards
                     else 0,
-                    "yards_per_catch": round(r.total_yards / r.total_receptions, 1)
+                    "yards_per_catch": round(float(r.total_yards) / float(r.total_receptions), 1)
                     if r.total_receptions and r.total_yards
                     else 0,
-                    "catch_rate": round(r.total_receptions / r.total_targets * 100, 1)
+                    "catch_rate": round(float(r.total_receptions) / float(r.total_targets) * 100, 1)
                     if r.total_targets and r.total_receptions
                     else 0,
                 }
@@ -1741,14 +1741,14 @@ def register_routes(app):
                     "total_yards": pass_stats.total_pass_yards or 0,
                     "total_tds": pass_stats.total_pass_tds or 0,
                     "total_ints": pass_stats.total_ints or 0,
-                    "yards_per_game": round(pass_stats.total_pass_yards / games, 1)
+                    "yards_per_game": round(float(pass_stats.total_pass_yards) / float(games), 1)
                     if games and pass_stats.total_pass_yards
                     else 0,
                 },
                 "rushing": {
                     "total_yards": rush_stats.total_rush_yards or 0,
                     "total_tds": rush_stats.total_rush_tds or 0,
-                    "yards_per_game": round(rush_stats.total_rush_yards / games, 1)
+                    "yards_per_game": round(float(rush_stats.total_rush_yards) / float(games), 1)
                     if games and rush_stats.total_rush_yards
                     else 0,
                 },
@@ -1756,7 +1756,7 @@ def register_routes(app):
                     "total_yards": rec_stats.total_rec_yards or 0,
                     "total_tds": rec_stats.total_rec_tds or 0,
                     "total_receptions": rec_stats.total_receptions or 0,
-                    "yards_per_game": round(rec_stats.total_rec_yards / games, 1)
+                    "yards_per_game": round(float(rec_stats.total_rec_yards) / float(games), 1)
                     if games and rec_stats.total_rec_yards
                     else 0,
                 },
