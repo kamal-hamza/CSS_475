@@ -19,8 +19,8 @@ import {
     Accordion,
     AccordionSummary,
     AccordionDetails,
-    Chip,
     Alert,
+    Chip,
 } from "@mui/material";
 import {
     ExpandMore as ExpandMoreIcon,
@@ -30,24 +30,24 @@ import {
     EmojiEvents as TrophyIcon,
     BarChart as BarChartIcon,
     People as PeopleIcon,
+    SportsFootball as FootballIcon,
 } from "@mui/icons-material";
 import api from "../services/api";
 
 const ComplexQueries = () => {
-    const [loading, setLoading] = useState(false);
+    const [loading, setLoading] = useState({});
     const [results, setResults] = useState({});
     const [params, setParams] = useState({
         season: 2024,
         week: 1,
-        position: "QB",
-        team: "BUF",
-        minYards: 250,
-        minGames: 3,
-        minRushYards: 50,
+        team: "KC",
+        min_yards: 250,
+        limit: 15,
+        player_id: "00-0033873", // Patrick Mahomes as default
     });
 
     const executeQuery = async (queryType, endpoint, queryParams = {}) => {
-        setLoading(true);
+        setLoading({ ...loading, [queryType]: true });
         try {
             const response = await api.get(endpoint, { params: queryParams });
             setResults({ ...results, [queryType]: response.data });
@@ -55,14 +55,30 @@ const ComplexQueries = () => {
             console.error(`Error executing ${queryType}:`, error);
             setResults({ ...results, [queryType]: { error: error.message } });
         } finally {
-            setLoading(false);
+            setLoading({ ...loading, [queryType]: false });
         }
     };
 
-    const renderQueryCard = (title, description, icon, queryType, endpoint, queryParams, sqlQuery) => (
-        <Accordion>
+    const renderQueryCard = (
+        title,
+        description,
+        icon,
+        queryType,
+        endpoint,
+        queryParams,
+        sqlQuery,
+        paramInputs,
+        renderFunction,
+    ) => (
+        <Accordion key={queryType}>
             <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                <Box sx={{ display: "flex", alignItems: "center", width: "100%" }}>
+                <Box
+                    sx={{
+                        display: "flex",
+                        alignItems: "center",
+                        width: "100%",
+                    }}
+                >
                     {icon}
                     <Box sx={{ ml: 2, flexGrow: 1 }}>
                         <Typography variant="h6">{title}</Typography>
@@ -75,25 +91,44 @@ const ComplexQueries = () => {
             <AccordionDetails>
                 <Box sx={{ width: "100%" }}>
                     {/* SQL Query Display */}
-                    <Alert severity="info" sx={{ mb: 2, fontFamily: "monospace", fontSize: "0.85rem" }}>
-                        <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: "bold" }}>
+                    <Alert
+                        severity="info"
+                        sx={{
+                            mb: 2,
+                            fontFamily: "monospace",
+                            fontSize: "0.85rem",
+                        }}
+                    >
+                        <Typography
+                            variant="subtitle2"
+                            sx={{ mb: 1, fontWeight: "bold" }}
+                        >
                             SQL Query:
                         </Typography>
-                        <pre style={{ margin: 0, whiteSpace: "pre-wrap", wordWrap: "break-word" }}>
+                        <pre
+                            style={{
+                                margin: 0,
+                                whiteSpace: "pre-wrap",
+                                wordWrap: "break-word",
+                            }}
+                        >
                             {sqlQuery}
                         </pre>
                     </Alert>
 
                     {/* Parameters */}
                     <Grid container spacing={2} sx={{ mb: 2 }}>
-                        {Object.keys(queryParams).map((key) => (
+                        {paramInputs.map(({ key, label }) => (
                             <Grid item xs={12} sm={6} md={4} key={key}>
                                 <TextField
                                     fullWidth
-                                    label={key.replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase())}
+                                    label={label}
                                     value={params[key] || ""}
                                     onChange={(e) =>
-                                        setParams({ ...params, [key]: e.target.value })
+                                        setParams({
+                                            ...params,
+                                            [key]: e.target.value,
+                                        })
                                     }
                                     size="small"
                                 />
@@ -103,439 +138,683 @@ const ComplexQueries = () => {
 
                     <Button
                         variant="contained"
-                        startIcon={loading ? <CircularProgress size={20} /> : <SearchIcon />}
-                        onClick={() => executeQuery(queryType, endpoint, queryParams)}
-                        disabled={loading}
+                        startIcon={
+                            loading[queryType] ? (
+                                <CircularProgress size={20} />
+                            ) : (
+                                <SearchIcon />
+                            )
+                        }
+                        onClick={() =>
+                            executeQuery(queryType, endpoint, queryParams)
+                        }
+                        disabled={loading[queryType]}
                         sx={{ mb: 2 }}
                     >
                         Execute Query
                     </Button>
 
                     {/* Results */}
-                    {results[queryType] && renderResults(queryType, results[queryType])}
+                    {results[queryType] && renderFunction(results[queryType])}
                 </Box>
             </AccordionDetails>
         </Accordion>
     );
 
-    const renderResults = (queryType, data) => {
+    const renderTopScorers = (data) => {
         if (data.error) {
-            return (
-                <Alert severity="error">
-                    Error: {data.error}
-                </Alert>
-            );
+            return <Alert severity="error">{data.error}</Alert>;
+        }
+        if (!data || data.length === 0) {
+            return <Alert severity="info">No results found</Alert>;
         }
 
-        if (!data || (Array.isArray(data) && data.length === 0)) {
-            return (
-                <Alert severity="warning">
-                    No results found
-                </Alert>
-            );
-        }
-
-        // Handle different result types
-        switch (queryType) {
-            case "bestQB":
-                return renderBestQBResults(data);
-            case "multiThreat":
-                return renderMultiThreatResults(data);
-            case "teamPerformance":
-                return renderTeamPerformanceResults(data);
-            case "weeklyLeaders":
-                return renderWeeklyLeadersResults(data);
-            case "consistent":
-                return renderConsistentResults(data);
-            default:
-                return <pre>{JSON.stringify(data, null, 2)}</pre>;
-        }
+        return (
+            <TableContainer component={Paper}>
+                <Table size="small">
+                    <TableHead>
+                        <TableRow>
+                            <TableCell>
+                                <strong>Player</strong>
+                            </TableCell>
+                            <TableCell>
+                                <strong>Position</strong>
+                            </TableCell>
+                            <TableCell>
+                                <strong>Team</strong>
+                            </TableCell>
+                            <TableCell>
+                                <strong>Week</strong>
+                            </TableCell>
+                            <TableCell>
+                                <strong>Opponent</strong>
+                            </TableCell>
+                            <TableCell align="right">
+                                <strong>Fantasy Points</strong>
+                            </TableCell>
+                        </TableRow>
+                    </TableHead>
+                    <TableBody>
+                        {data.map((row, idx) => (
+                            <TableRow key={idx}>
+                                <TableCell>{row.player_name}</TableCell>
+                                <TableCell>
+                                    <Chip
+                                        label={row.position}
+                                        size="small"
+                                        color="primary"
+                                    />
+                                </TableCell>
+                                <TableCell>{row.team}</TableCell>
+                                <TableCell>{row.week}</TableCell>
+                                <TableCell>{row.opponent}</TableCell>
+                                <TableCell align="right">
+                                    <strong>{row.fantasy_points}</strong>
+                                </TableCell>
+                            </TableRow>
+                        ))}
+                    </TableBody>
+                </Table>
+            </TableContainer>
+        );
     };
 
-    const renderBestQBResults = (data) => (
-        <TableContainer component={Paper}>
-            <Table size="small">
-                <TableHead>
-                    <TableRow>
-                        <TableCell>Player</TableCell>
-                        <TableCell>Team</TableCell>
-                        <TableCell>Week</TableCell>
-                        <TableCell>Opponent</TableCell>
-                        <TableCell align="right">Yards</TableCell>
-                        <TableCell align="right">TDs</TableCell>
-                        <TableCell align="right">INTs</TableCell>
-                        <TableCell align="right">Comp %</TableCell>
-                        <TableCell align="right">Fantasy Pts</TableCell>
-                    </TableRow>
-                </TableHead>
-                <TableBody>
-                    {data.map((row, idx) => (
-                        <TableRow key={idx}>
-                            <TableCell>{row.player_name}</TableCell>
-                            <TableCell>{row.team}</TableCell>
-                            <TableCell>{row.week}</TableCell>
-                            <TableCell>{row.opponent}</TableCell>
-                            <TableCell align="right">{row.passing_yards}</TableCell>
-                            <TableCell align="right">{row.passing_tds}</TableCell>
-                            <TableCell align="right">{row.interceptions}</TableCell>
-                            <TableCell align="right">{row.completion_pct}%</TableCell>
+    const renderQBLeaders = (data) => {
+        if (data.error) {
+            return <Alert severity="error">{data.error}</Alert>;
+        }
+        if (!data || data.length === 0) {
+            return <Alert severity="info">No results found</Alert>;
+        }
+
+        return (
+            <TableContainer component={Paper}>
+                <Table size="small">
+                    <TableHead>
+                        <TableRow>
+                            <TableCell>
+                                <strong>QB</strong>
+                            </TableCell>
+                            <TableCell>
+                                <strong>Team</strong>
+                            </TableCell>
+                            <TableCell>
+                                <strong>Week</strong>
+                            </TableCell>
+                            <TableCell>
+                                <strong>Opponent</strong>
+                            </TableCell>
                             <TableCell align="right">
-                                <Chip label={row.fantasy_points.toFixed(1)} color="primary" size="small" />
+                                <strong>Yards</strong>
+                            </TableCell>
+                            <TableCell align="right">
+                                <strong>TDs</strong>
+                            </TableCell>
+                            <TableCell align="right">
+                                <strong>INTs</strong>
+                            </TableCell>
+                            <TableCell align="right">
+                                <strong>Comp %</strong>
                             </TableCell>
                         </TableRow>
-                    ))}
-                </TableBody>
-            </Table>
-        </TableContainer>
-    );
+                    </TableHead>
+                    <TableBody>
+                        {data.map((row, idx) => (
+                            <TableRow key={idx}>
+                                <TableCell>{row.player_name}</TableCell>
+                                <TableCell>{row.team}</TableCell>
+                                <TableCell>{row.week}</TableCell>
+                                <TableCell>{row.opponent}</TableCell>
+                                <TableCell align="right">
+                                    <strong>{row.passing_yards}</strong>
+                                </TableCell>
+                                <TableCell align="right">
+                                    {row.passing_tds}
+                                </TableCell>
+                                <TableCell align="right">
+                                    {row.interceptions}
+                                </TableCell>
+                                <TableCell align="right">
+                                    {row.completion_pct}% ({row.completions}/
+                                    {row.attempts})
+                                </TableCell>
+                            </TableRow>
+                        ))}
+                    </TableBody>
+                </Table>
+            </TableContainer>
+        );
+    };
 
-    const renderMultiThreatResults = (data) => (
-        <TableContainer component={Paper}>
-            <Table size="small">
-                <TableHead>
-                    <TableRow>
-                        <TableCell>Player</TableCell>
-                        <TableCell>Team</TableCell>
-                        <TableCell align="right">Pass Yds</TableCell>
-                        <TableCell align="right">Pass TDs</TableCell>
-                        <TableCell align="right">Rush Yds</TableCell>
-                        <TableCell align="right">Rush TDs</TableCell>
-                        <TableCell align="right">Games</TableCell>
-                        <TableCell align="right">Fantasy Pts</TableCell>
-                        <TableCell align="right">Avg Pts/Game</TableCell>
-                    </TableRow>
-                </TableHead>
-                <TableBody>
-                    {data.map((row, idx) => (
-                        <TableRow key={idx}>
-                            <TableCell>{row.player_name}</TableCell>
-                            <TableCell>{row.team}</TableCell>
-                            <TableCell align="right">{row.total_pass_yards}</TableCell>
-                            <TableCell align="right">{row.total_pass_tds}</TableCell>
-                            <TableCell align="right">{row.total_rush_yards}</TableCell>
-                            <TableCell align="right">{row.total_rush_tds}</TableCell>
-                            <TableCell align="right">{row.games_played}</TableCell>
-                            <TableCell align="right">{row.total_fantasy_points.toFixed(1)}</TableCell>
+    const renderRushingLeaders = (data) => {
+        if (data.error) {
+            return <Alert severity="error">{data.error}</Alert>;
+        }
+        if (!data || data.length === 0) {
+            return <Alert severity="info">No results found</Alert>;
+        }
+
+        return (
+            <TableContainer component={Paper}>
+                <Table size="small">
+                    <TableHead>
+                        <TableRow>
+                            <TableCell>
+                                <strong>Player</strong>
+                            </TableCell>
+                            <TableCell>
+                                <strong>Pos</strong>
+                            </TableCell>
+                            <TableCell>
+                                <strong>Team</strong>
+                            </TableCell>
                             <TableCell align="right">
-                                <Chip label={row.avg_fantasy_points.toFixed(1)} color="success" size="small" />
+                                <strong>Games</strong>
+                            </TableCell>
+                            <TableCell align="right">
+                                <strong>Carries</strong>
+                            </TableCell>
+                            <TableCell align="right">
+                                <strong>Yards</strong>
+                            </TableCell>
+                            <TableCell align="right">
+                                <strong>TDs</strong>
+                            </TableCell>
+                            <TableCell align="right">
+                                <strong>YPG</strong>
+                            </TableCell>
+                            <TableCell align="right">
+                                <strong>YPC</strong>
                             </TableCell>
                         </TableRow>
-                    ))}
-                </TableBody>
-            </Table>
-        </TableContainer>
-    );
+                    </TableHead>
+                    <TableBody>
+                        {data.map((row, idx) => (
+                            <TableRow key={idx}>
+                                <TableCell>{row.player_name}</TableCell>
+                                <TableCell>
+                                    <Chip label={row.position} size="small" />
+                                </TableCell>
+                                <TableCell>{row.team}</TableCell>
+                                <TableCell align="right">
+                                    {row.games_played}
+                                </TableCell>
+                                <TableCell align="right">
+                                    {row.total_carries}
+                                </TableCell>
+                                <TableCell align="right">
+                                    <strong>{row.total_yards}</strong>
+                                </TableCell>
+                                <TableCell align="right">
+                                    {row.total_tds}
+                                </TableCell>
+                                <TableCell align="right">
+                                    {row.yards_per_game}
+                                </TableCell>
+                                <TableCell align="right">
+                                    {row.yards_per_carry}
+                                </TableCell>
+                            </TableRow>
+                        ))}
+                    </TableBody>
+                </Table>
+            </TableContainer>
+        );
+    };
 
-    const renderTeamPerformanceResults = (data) => (
-        <Grid container spacing={2}>
-            <Grid item xs={12} md={6}>
-                <Card>
-                    <CardContent>
-                        <Typography variant="h6" gutterBottom>
-                            Home Performance
-                        </Typography>
-                        <Grid container spacing={1}>
-                            <Grid item xs={6}>
-                                <Typography variant="body2" color="text.secondary">Games</Typography>
-                                <Typography variant="h6">{data.home_performance?.games || 0}</Typography>
-                            </Grid>
-                            <Grid item xs={6}>
-                                <Typography variant="body2" color="text.secondary">Avg Score</Typography>
-                                <Typography variant="h6">{data.home_performance?.avg_score || 0}</Typography>
-                            </Grid>
-                            <Grid item xs={6}>
-                                <Typography variant="body2" color="text.secondary">Pass Yards</Typography>
-                                <Typography variant="h6">{data.home_performance?.total_pass_yards || 0}</Typography>
-                            </Grid>
-                            <Grid item xs={6}>
-                                <Typography variant="body2" color="text.secondary">Rush Yards</Typography>
-                                <Typography variant="h6">{data.home_performance?.total_rush_yards || 0}</Typography>
-                            </Grid>
-                        </Grid>
-                    </CardContent>
-                </Card>
-            </Grid>
-            <Grid item xs={12} md={6}>
-                <Card>
-                    <CardContent>
-                        <Typography variant="h6" gutterBottom>
-                            Away Performance
-                        </Typography>
-                        <Grid container spacing={1}>
-                            <Grid item xs={6}>
-                                <Typography variant="body2" color="text.secondary">Games</Typography>
-                                <Typography variant="h6">{data.away_performance?.games || 0}</Typography>
-                            </Grid>
-                            <Grid item xs={6}>
-                                <Typography variant="body2" color="text.secondary">Avg Score</Typography>
-                                <Typography variant="h6">{data.away_performance?.avg_score || 0}</Typography>
-                            </Grid>
-                            <Grid item xs={6}>
-                                <Typography variant="body2" color="text.secondary">Pass Yards</Typography>
-                                <Typography variant="h6">{data.away_performance?.total_pass_yards || 0}</Typography>
-                            </Grid>
-                            <Grid item xs={6}>
-                                <Typography variant="body2" color="text.secondary">Rush Yards</Typography>
-                                <Typography variant="h6">{data.away_performance?.total_rush_yards || 0}</Typography>
-                            </Grid>
-                        </Grid>
-                    </CardContent>
-                </Card>
-            </Grid>
-        </Grid>
-    );
+    const renderReceivingLeaders = (data) => {
+        if (data.error) {
+            return <Alert severity="error">{data.error}</Alert>;
+        }
+        if (!data || data.length === 0) {
+            return <Alert severity="info">No results found</Alert>;
+        }
 
-    const renderWeeklyLeadersResults = (data) => (
-        <Grid container spacing={2}>
-            <Grid item xs={12} md={4}>
-                <Card sx={{ bgcolor: "primary.dark" }}>
-                    <CardContent>
-                        <Typography variant="h6" gutterBottom sx={{ display: "flex", alignItems: "center" }}>
-                            <TrophyIcon sx={{ mr: 1 }} /> Passing Leader
-                        </Typography>
-                        {data.passing_leader ? (
-                            <>
-                                <Typography variant="h5">{data.passing_leader.player_name}</Typography>
-                                <Typography color="text.secondary">{data.passing_leader.team}</Typography>
-                                <Box sx={{ mt: 2 }}>
-                                    <Typography variant="h4">{data.passing_leader.yards} yds</Typography>
-                                    <Typography>{data.passing_leader.tds} TDs</Typography>
-                                    <Typography variant="caption">vs {data.passing_leader.opponent}</Typography>
-                                </Box>
-                            </>
-                        ) : (
-                            <Typography>No data</Typography>
-                        )}
-                    </CardContent>
-                </Card>
-            </Grid>
-            <Grid item xs={12} md={4}>
-                <Card sx={{ bgcolor: "success.dark" }}>
-                    <CardContent>
-                        <Typography variant="h6" gutterBottom sx={{ display: "flex", alignItems: "center" }}>
-                            <TrophyIcon sx={{ mr: 1 }} /> Rushing Leader
-                        </Typography>
-                        {data.rushing_leader ? (
-                            <>
-                                <Typography variant="h5">{data.rushing_leader.player_name}</Typography>
-                                <Typography color="text.secondary">{data.rushing_leader.team}</Typography>
-                                <Box sx={{ mt: 2 }}>
-                                    <Typography variant="h4">{data.rushing_leader.yards} yds</Typography>
-                                    <Typography>{data.rushing_leader.tds} TDs</Typography>
-                                    <Typography variant="caption">vs {data.rushing_leader.opponent}</Typography>
-                                </Box>
-                            </>
-                        ) : (
-                            <Typography>No data</Typography>
-                        )}
-                    </CardContent>
-                </Card>
-            </Grid>
-            <Grid item xs={12} md={4}>
-                <Card sx={{ bgcolor: "warning.dark" }}>
-                    <CardContent>
-                        <Typography variant="h6" gutterBottom sx={{ display: "flex", alignItems: "center" }}>
-                            <TrophyIcon sx={{ mr: 1 }} /> Receiving Leader
-                        </Typography>
-                        {data.receiving_leader ? (
-                            <>
-                                <Typography variant="h5">{data.receiving_leader.player_name}</Typography>
-                                <Typography color="text.secondary">{data.receiving_leader.team}</Typography>
-                                <Box sx={{ mt: 2 }}>
-                                    <Typography variant="h4">{data.receiving_leader.yards} yds</Typography>
-                                    <Typography>{data.receiving_leader.receptions} rec, {data.receiving_leader.tds} TDs</Typography>
-                                    <Typography variant="caption">vs {data.receiving_leader.opponent}</Typography>
-                                </Box>
-                            </>
-                        ) : (
-                            <Typography>No data</Typography>
-                        )}
-                    </CardContent>
-                </Card>
-            </Grid>
-        </Grid>
-    );
-
-    const renderConsistentResults = (data) => (
-        <TableContainer component={Paper}>
-            <Table size="small">
-                <TableHead>
-                    <TableRow>
-                        <TableCell>Player</TableCell>
-                        <TableCell>Team</TableCell>
-                        <TableCell align="right">Games</TableCell>
-                        <TableCell align="right">Avg Pts</TableCell>
-                        <TableCell align="right">Min Pts</TableCell>
-                        <TableCell align="right">Max Pts</TableCell>
-                        <TableCell align="right">Point Range</TableCell>
-                        <TableCell align="right">Total Pts</TableCell>
-                    </TableRow>
-                </TableHead>
-                <TableBody>
-                    {data.map((row, idx) => (
-                        <TableRow key={idx}>
-                            <TableCell>{row.player_name}</TableCell>
-                            <TableCell>{row.team}</TableCell>
-                            <TableCell align="right">{row.games_played}</TableCell>
-                            <TableCell align="right">
-                                <Chip label={row.avg_points} color="primary" size="small" />
+        return (
+            <TableContainer component={Paper}>
+                <Table size="small">
+                    <TableHead>
+                        <TableRow>
+                            <TableCell>
+                                <strong>Player</strong>
                             </TableCell>
-                            <TableCell align="right">{row.min_points}</TableCell>
-                            <TableCell align="right">{row.max_points}</TableCell>
-                            <TableCell align="right">{row.point_range}</TableCell>
-                            <TableCell align="right">{row.total_points}</TableCell>
+                            <TableCell>
+                                <strong>Pos</strong>
+                            </TableCell>
+                            <TableCell>
+                                <strong>Team</strong>
+                            </TableCell>
+                            <TableCell align="right">
+                                <strong>Games</strong>
+                            </TableCell>
+                            <TableCell align="right">
+                                <strong>Rec</strong>
+                            </TableCell>
+                            <TableCell align="right">
+                                <strong>Targets</strong>
+                            </TableCell>
+                            <TableCell align="right">
+                                <strong>Yards</strong>
+                            </TableCell>
+                            <TableCell align="right">
+                                <strong>TDs</strong>
+                            </TableCell>
+                            <TableCell align="right">
+                                <strong>YPG</strong>
+                            </TableCell>
+                            <TableCell align="right">
+                                <strong>YPC</strong>
+                            </TableCell>
+                            <TableCell align="right">
+                                <strong>Catch %</strong>
+                            </TableCell>
                         </TableRow>
-                    ))}
-                </TableBody>
-            </Table>
-        </TableContainer>
-    );
+                    </TableHead>
+                    <TableBody>
+                        {data.map((row, idx) => (
+                            <TableRow key={idx}>
+                                <TableCell>{row.player_name}</TableCell>
+                                <TableCell>
+                                    <Chip label={row.position} size="small" />
+                                </TableCell>
+                                <TableCell>{row.team}</TableCell>
+                                <TableCell align="right">
+                                    {row.games_played}
+                                </TableCell>
+                                <TableCell align="right">
+                                    {row.total_receptions}
+                                </TableCell>
+                                <TableCell align="right">
+                                    {row.total_targets}
+                                </TableCell>
+                                <TableCell align="right">
+                                    <strong>{row.total_yards}</strong>
+                                </TableCell>
+                                <TableCell align="right">
+                                    {row.total_tds}
+                                </TableCell>
+                                <TableCell align="right">
+                                    {row.yards_per_game}
+                                </TableCell>
+                                <TableCell align="right">
+                                    {row.yards_per_catch}
+                                </TableCell>
+                                <TableCell align="right">
+                                    {row.catch_rate}%
+                                </TableCell>
+                            </TableRow>
+                        ))}
+                    </TableBody>
+                </Table>
+            </TableContainer>
+        );
+    };
+
+    const renderTeamStats = (data) => {
+        if (data.error) {
+            return <Alert severity="error">{data.error}</Alert>;
+        }
+        if (!data) {
+            return <Alert severity="info">No results found</Alert>;
+        }
+
+        return (
+            <Box>
+                <Typography variant="h6" sx={{ mb: 2 }}>
+                    {data.team} - {data.season} Season ({data.games_played}{" "}
+                    games)
+                </Typography>
+                <Grid container spacing={2}>
+                    <Grid item xs={12} md={4}>
+                        <Card>
+                            <CardContent>
+                                <Typography color="text.secondary" gutterBottom>
+                                    Passing
+                                </Typography>
+                                <Typography variant="h5" component="div">
+                                    {data.passing.total_yards} yards
+                                </Typography>
+                                <Typography
+                                    sx={{ mb: 1.5 }}
+                                    color="text.secondary"
+                                >
+                                    {data.passing.yards_per_game} YPG
+                                </Typography>
+                                <Typography variant="body2">
+                                    {data.passing.total_tds} TDs,{" "}
+                                    {data.passing.total_ints} INTs
+                                </Typography>
+                            </CardContent>
+                        </Card>
+                    </Grid>
+                    <Grid item xs={12} md={4}>
+                        <Card>
+                            <CardContent>
+                                <Typography color="text.secondary" gutterBottom>
+                                    Rushing
+                                </Typography>
+                                <Typography variant="h5" component="div">
+                                    {data.rushing.total_yards} yards
+                                </Typography>
+                                <Typography
+                                    sx={{ mb: 1.5 }}
+                                    color="text.secondary"
+                                >
+                                    {data.rushing.yards_per_game} YPG
+                                </Typography>
+                                <Typography variant="body2">
+                                    {data.rushing.total_tds} TDs
+                                </Typography>
+                            </CardContent>
+                        </Card>
+                    </Grid>
+                    <Grid item xs={12} md={4}>
+                        <Card>
+                            <CardContent>
+                                <Typography color="text.secondary" gutterBottom>
+                                    Receiving
+                                </Typography>
+                                <Typography variant="h5" component="div">
+                                    {data.receiving.total_yards} yards
+                                </Typography>
+                                <Typography
+                                    sx={{ mb: 1.5 }}
+                                    color="text.secondary"
+                                >
+                                    {data.receiving.yards_per_game} YPG
+                                </Typography>
+                                <Typography variant="body2">
+                                    {data.receiving.total_receptions} catches,{" "}
+                                    {data.receiving.total_tds} TDs
+                                </Typography>
+                            </CardContent>
+                        </Card>
+                    </Grid>
+                </Grid>
+            </Box>
+        );
+    };
+
+    const renderPlayerGameLog = (data) => {
+        if (data.error) {
+            return <Alert severity="error">{data.error}</Alert>;
+        }
+        if (!data || !data.games || data.games.length === 0) {
+            return (
+                <Alert severity="info">No game log found for this player</Alert>
+            );
+        }
+
+        return (
+            <Box>
+                <Typography variant="h6" sx={{ mb: 2 }}>
+                    {data.player.player_name} ({data.player.position}) -{" "}
+                    {data.player.team}
+                </Typography>
+                <TableContainer component={Paper}>
+                    <Table size="small">
+                        <TableHead>
+                            <TableRow>
+                                <TableCell>
+                                    <strong>Week</strong>
+                                </TableCell>
+                                <TableCell>
+                                    <strong>Opponent</strong>
+                                </TableCell>
+                                <TableCell>
+                                    <strong>Date</strong>
+                                </TableCell>
+                                <TableCell>
+                                    <strong>Stadium</strong>
+                                </TableCell>
+                                <TableCell align="right">
+                                    <strong>Fantasy Points</strong>
+                                </TableCell>
+                            </TableRow>
+                        </TableHead>
+                        <TableBody>
+                            {data.games.map((game, idx) => (
+                                <TableRow key={idx}>
+                                    <TableCell>{game.week}</TableCell>
+                                    <TableCell>{game.opponent}</TableCell>
+                                    <TableCell>
+                                        {game.gameday
+                                            ? new Date(
+                                                  game.gameday,
+                                              ).toLocaleDateString()
+                                            : "N/A"}
+                                    </TableCell>
+                                    <TableCell>
+                                        {game.stadium || "N/A"}
+                                    </TableCell>
+                                    <TableCell align="right">
+                                        <strong>{game.fantasy_points}</strong>
+                                    </TableCell>
+                                </TableRow>
+                            ))}
+                        </TableBody>
+                    </Table>
+                </TableContainer>
+            </Box>
+        );
+    };
 
     return (
         <Container maxWidth="xl">
             <Box sx={{ mb: 4 }}>
-                <Typography variant="h3" component="h1" sx={{ fontWeight: "bold", mb: 1 }}>
-                    Complex Queries
+                <Typography
+                    variant="h3"
+                    component="h1"
+                    sx={{ fontWeight: "bold", mb: 1 }}
+                >
+                    Database Queries
                 </Typography>
                 <Typography variant="h6" color="text.secondary">
-                    Demonstrating advanced SQL queries with multiple JOINs, subqueries, and aggregations
+                    Simple SQL queries demonstrating our NFL data
                 </Typography>
             </Box>
 
             <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
-                {/* Query 1: Best QB Performances */}
+                {/* Query 1: Top Fantasy Scorers */}
                 {renderQueryCard(
-                    "Best QB Performances",
-                    "JOIN 4 tables: Player, GameLog, PassingStats, Game. Find top QB performances with game context.",
-                    <TrendingUpIcon color="primary" />,
-                    "bestQB",
-                    "/complex/best-qb-performances",
-                    { season: params.season, min_yards: params.minYards, limit: 20 },
+                    "Top Fantasy Scorers by Week",
+                    "Simple SELECT with JOIN and ORDER BY to find the highest fantasy point scorers for a specific week",
+                    <TrophyIcon color="primary" />,
+                    "topScorers",
+                    "/api/queries/top-scorers",
+                    {
+                        season: params.season,
+                        week: params.week,
+                        limit: params.limit,
+                    },
                     `SELECT
-    p.player_name, p.position, p.team,
-    gl.week, gl.opponent,
-    ps.passing_yards, ps.passing_tds, ps.interceptions,
-    ps.completions, ps.attempts,
-    g.gameday, g.stadium,
+    p.player_name,
+    p.position,
+    p.team,
+    gl.week,
+    gl.opponent,
     gl.fantasy_points_ppr
 FROM players p
 JOIN game_logs gl ON p.player_id = gl.player_id
-JOIN passing_stats ps ON gl.player_id = ps.player_id AND gl.game_id = ps.game_id
-JOIN games g ON gl.game_id = g.game_id
-WHERE gl.season = ? AND p.position = 'QB' AND ps.passing_yards >= ?
-ORDER BY ps.passing_yards DESC
-LIMIT 20`
+WHERE gl.season = ? AND gl.week = ?
+ORDER BY gl.fantasy_points_ppr DESC
+LIMIT ?`,
+                    [
+                        { key: "season", label: "Season" },
+                        { key: "week", label: "Week" },
+                        { key: "limit", label: "Limit" },
+                    ],
+                    renderTopScorers,
                 )}
 
-                {/* Query 2: Multi-Threat Players */}
+                {/* Query 2: QB Passing Leaders */}
                 {renderQueryCard(
-                    "Dual-Threat Players",
-                    "JOIN 4 tables with NESTED SUBQUERY. Find players with both passing and rushing stats.",
-                    <SpeedIcon color="success" />,
-                    "multiThreat",
-                    "/complex/multi-threat-players",
-                    { season: params.season, min_rush_yards: params.minRushYards },
-                    `-- Subquery to find players with significant rushing yards
-WITH rushing_players AS (
-    SELECT rs.player_id
-    FROM rushing_stats rs
-    JOIN game_logs gl ON rs.player_id = gl.player_id AND rs.game_id = gl.game_id
-    WHERE gl.season = ?
-    GROUP BY rs.player_id
-    HAVING SUM(rs.rushing_yards) >= ?
-)
--- Main query joining passing and rushing stats
+                    "QB Passing Yard Leaders",
+                    "Multi-table JOIN to find QB performances with passing stats and game details",
+                    <TrendingUpIcon color="success" />,
+                    "qbLeaders",
+                    "/api/queries/qb-passing-leaders",
+                    {
+                        season: params.season,
+                        min_yards: params.min_yards,
+                        limit: params.limit,
+                    },
+                    `SELECT
+    p.player_name,
+    p.team,
+    gl.week,
+    gl.opponent,
+    ps.passing_yards,
+    ps.passing_tds,
+    ps.interceptions,
+    ps.completions,
+    ps.attempts
+FROM players p
+JOIN game_logs gl ON p.player_id = gl.player_id
+JOIN passing_stats ps ON ps.player_id = p.player_id
+    AND ps.game_id = gl.game_id
+WHERE gl.season = ?
+    AND p.position = 'QB'
+    AND ps.passing_yards >= ?
+ORDER BY ps.passing_yards DESC
+LIMIT ?`,
+                    [
+                        { key: "season", label: "Season" },
+                        { key: "min_yards", label: "Min Passing Yards" },
+                        { key: "limit", label: "Limit" },
+                    ],
+                    renderQBLeaders,
+                )}
+
+                {/* Query 3: Rushing Leaders */}
+                {renderQueryCard(
+                    "Season Rushing Leaders",
+                    "GROUP BY query with aggregate functions (SUM, COUNT) to calculate season totals",
+                    <SpeedIcon color="warning" />,
+                    "rushingLeaders",
+                    "/api/queries/rushing-leaders",
+                    { season: params.season, limit: params.limit },
+                    `SELECT
+    p.player_name,
+    p.position,
+    p.team,
+    SUM(rs.rushing_yards) as total_yards,
+    SUM(rs.rushing_tds) as total_tds,
+    SUM(rs.carries) as total_carries,
+    COUNT(gl.week) as games_played
+FROM players p
+JOIN game_logs gl ON p.player_id = gl.player_id
+JOIN rushing_stats rs ON rs.player_id = p.player_id
+    AND rs.game_id = gl.game_id
+WHERE gl.season = ?
+GROUP BY p.player_id, p.player_name, p.position, p.team
+ORDER BY total_yards DESC
+LIMIT ?`,
+                    [
+                        { key: "season", label: "Season" },
+                        { key: "limit", label: "Limit" },
+                    ],
+                    renderRushingLeaders,
+                )}
+
+                {/* Query 4: Receiving Leaders */}
+                {renderQueryCard(
+                    "Season Receiving Leaders",
+                    "GROUP BY with multiple aggregate calculations for receiving stats",
+                    <PeopleIcon color="error" />,
+                    "receivingLeaders",
+                    "/api/queries/receiving-leaders",
+                    { season: params.season, limit: params.limit },
+                    `SELECT
+    p.player_name,
+    p.position,
+    p.team,
+    SUM(rec.receiving_yards) as total_yards,
+    SUM(rec.receptions) as total_receptions,
+    SUM(rec.receiving_tds) as total_tds,
+    SUM(rec.targets) as total_targets,
+    COUNT(gl.week) as games_played
+FROM players p
+JOIN game_logs gl ON p.player_id = gl.player_id
+JOIN receiving_stats rec ON rec.player_id = p.player_id
+    AND rec.game_id = gl.game_id
+WHERE gl.season = ?
+GROUP BY p.player_id, p.player_name, p.position, p.team
+ORDER BY total_yards DESC
+LIMIT ?`,
+                    [
+                        { key: "season", label: "Season" },
+                        { key: "limit", label: "Limit" },
+                    ],
+                    renderReceivingLeaders,
+                )}
+
+                {/* Query 5: Team Aggregate Stats */}
+                {renderQueryCard(
+                    "Team Offensive Statistics",
+                    "Multiple aggregate queries combined to show complete team offensive stats",
+                    <BarChartIcon color="info" />,
+                    "teamStats",
+                    "/api/queries/team-stats",
+                    { season: params.season, team: params.team },
+                    `-- Passing stats
 SELECT
-    p.player_id, p.player_name, p.position, p.team,
     SUM(ps.passing_yards) as total_pass_yards,
     SUM(ps.passing_tds) as total_pass_tds,
+    SUM(ps.interceptions) as total_ints
+FROM passing_stats ps
+JOIN game_logs gl ON ps.player_id = gl.player_id
+WHERE gl.season = ? AND gl.team = ?
+
+-- Rushing stats
+SELECT
     SUM(rs.rushing_yards) as total_rush_yards,
-    SUM(rs.rushing_tds) as total_rush_tds,
-    COUNT(gl.week) as games_played,
-    SUM(gl.fantasy_points_ppr) as total_fantasy_points
-FROM players p
-JOIN game_logs gl ON p.player_id = gl.player_id
-JOIN passing_stats ps ON gl.player_id = ps.player_id AND gl.game_id = ps.game_id
-JOIN rushing_stats rs ON gl.player_id = rs.player_id AND gl.game_id = rs.game_id
-WHERE gl.season = ? AND p.player_id IN (SELECT player_id FROM rushing_players)
-GROUP BY p.player_id, p.player_name, p.position, p.team
-ORDER BY total_fantasy_points DESC`
-                )}
+    SUM(rs.rushing_tds) as total_rush_tds
+FROM rushing_stats rs
+JOIN game_logs gl ON rs.player_id = gl.player_id
+WHERE gl.season = ? AND gl.team = ?
 
-                {/* Query 3: Team Performance Breakdown */}
-                {renderQueryCard(
-                    "Team Home vs Away Performance",
-                    "JOIN 5 tables with GROUP BY and AGGREGATE functions. Analyze home vs away offensive performance.",
-                    <BarChartIcon color="warning" />,
-                    "teamPerformance",
-                    "/complex/team-performance-breakdown",
-                    { season: params.season, team: params.team },
-                    `-- Home games
+-- Receiving stats
 SELECT
-    COUNT(g.game_id) as games,
-    AVG(g.home_score) as avg_score,
-    SUM(ps.passing_yards) as total_pass_yards,
-    SUM(rs.rushing_yards) as total_rush_yards
-FROM games g
-JOIN game_logs gl ON g.game_id = gl.game_id
-LEFT JOIN passing_stats ps ON gl.player_id = ps.player_id AND gl.game_id = ps.game_id
-LEFT JOIN rushing_stats rs ON gl.player_id = rs.player_id AND gl.game_id = rs.game_id
-WHERE g.season = ? AND g.home_team = ? AND gl.team = ?
-
--- Away games (similar structure)
-SELECT
-    COUNT(g.game_id) as games,
-    AVG(g.away_score) as avg_score,
-    SUM(ps.passing_yards) as total_pass_yards,
-    SUM(rs.rushing_yards) as total_rush_yards
-FROM games g
-JOIN game_logs gl ON g.game_id = gl.game_id
-LEFT JOIN passing_stats ps ON gl.player_id = ps.player_id AND gl.game_id = ps.game_id
-LEFT JOIN rushing_stats rs ON gl.player_id = rs.player_id AND gl.game_id = rs.game_id
-WHERE g.season = ? AND g.away_team = ? AND gl.team = ?`
+    SUM(rec.receiving_yards) as total_rec_yards,
+    SUM(rec.receiving_tds) as total_rec_tds,
+    SUM(rec.receptions) as total_receptions
+FROM receiving_stats rec
+JOIN game_logs gl ON rec.player_id = gl.player_id
+WHERE gl.season = ? AND gl.team = ?`,
+                    [
+                        { key: "season", label: "Season" },
+                        { key: "team", label: "Team (e.g., KC, BUF, SF)" },
+                    ],
+                    renderTeamStats,
                 )}
 
-                {/* Query 4: Weekly Leaders */}
+                {/* Query 6: Player Game Log */}
                 {renderQueryCard(
-                    "Weekly Statistical Leaders",
-                    "Multiple JOINs with separate aggregations for different stat categories.",
-                    <TrophyIcon color="error" />,
-                    "weeklyLeaders",
-                    "/complex/weekly-leaders",
-                    { season: params.season, week: params.week },
-                    `-- Passing Leader
-SELECT p.player_name, p.team, ps.passing_yards, ps.passing_tds, gl.opponent
-FROM players p
-JOIN passing_stats ps ON p.player_id = ps.player_id
-JOIN game_logs gl ON p.player_id = gl.player_id AND ps.game_id = gl.game_id
-WHERE gl.season = ? AND gl.week = ?
-ORDER BY ps.passing_yards DESC
-LIMIT 1
-
--- Similar queries for Rushing and Receiving leaders`
-                )}
-
-                {/* Query 5: Consistent Performers */}
-                {renderQueryCard(
-                    "Most Consistent Players",
-                    "GROUP BY with HAVING clause and statistical aggregate functions (AVG, MIN, MAX).",
-                    <PeopleIcon color="info" />,
-                    "consistent",
-                    "/complex/consistent-performers",
-                    { season: params.season, position: params.position, min_games: params.minGames },
+                    "Player Game Log",
+                    "Simple JOIN to retrieve a player's complete game-by-game performance log",
+                    <FootballIcon color="secondary" />,
+                    "playerGameLog",
+                    "/api/queries/player-game-log",
+                    { player_id: params.player_id, season: params.season },
                     `SELECT
-    p.player_id, p.player_name, p.position, p.team,
-    COUNT(gl.week) as games_played,
-    AVG(gl.fantasy_points_ppr) as avg_points,
-    MIN(gl.fantasy_points_ppr) as min_points,
-    MAX(gl.fantasy_points_ppr) as max_points,
-    SUM(gl.fantasy_points_ppr) as total_points
-FROM players p
-JOIN game_logs gl ON p.player_id = gl.player_id
-WHERE gl.season = ? AND p.position = ?
-GROUP BY p.player_id, p.player_name, p.position, p.team
-HAVING COUNT(gl.week) >= ?
-ORDER BY avg_points DESC`
+    gl.week,
+    gl.opponent,
+    gl.fantasy_points_ppr,
+    g.gameday,
+    g.stadium
+FROM game_logs gl
+JOIN games g ON gl.game_id = g.game_id
+WHERE gl.player_id = ? AND gl.season = ?
+ORDER BY gl.week`,
+                    [
+                        {
+                            key: "player_id",
+                            label: "Player ID (e.g., 00-0033873 for Mahomes)",
+                        },
+                        { key: "season", label: "Season" },
+                    ],
+                    renderPlayerGameLog,
                 )}
             </Box>
         </Container>

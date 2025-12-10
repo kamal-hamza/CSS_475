@@ -1374,3 +1374,338 @@ def register_routes(app):
                 "team": player.team,
             }
         )
+
+    # ========================================
+    # Simple Query Demonstration Endpoints
+    # ========================================
+
+    @app.route("/api/queries/top-scorers", methods=["GET"])
+    def query_top_scorers():
+        """Simple query: Top fantasy point scorers for a given week"""
+        season = request.args.get("season", 2024, type=int)
+        week = request.args.get("week", 1, type=int)
+        limit = request.args.get("limit", 10, type=int)
+
+        results = (
+            db.session.query(
+                Player.player_name,
+                Player.position,
+                Player.team,
+                GameLog.week,
+                GameLog.opponent,
+                GameLog.fantasy_points_ppr,
+            )
+            .join(GameLog, Player.player_id == GameLog.player_id)
+            .filter(GameLog.season == season, GameLog.week == week)
+            .order_by(desc(GameLog.fantasy_points_ppr))
+            .limit(limit)
+            .all()
+        )
+
+        return jsonify(
+            [
+                {
+                    "player_name": r.player_name,
+                    "position": r.position,
+                    "team": r.team,
+                    "week": r.week,
+                    "opponent": r.opponent,
+                    "fantasy_points": round(float(r.fantasy_points_ppr), 2)
+                    if r.fantasy_points_ppr
+                    else 0,
+                }
+                for r in results
+            ]
+        )
+
+    @app.route("/api/queries/qb-passing-leaders", methods=["GET"])
+    def query_qb_passing_leaders():
+        """Simple query: QB passing yard leaders with game details"""
+        season = request.args.get("season", 2024, type=int)
+        min_yards = request.args.get("min_yards", 250, type=int)
+        limit = request.args.get("limit", 15, type=int)
+
+        results = (
+            db.session.query(
+                Player.player_name,
+                Player.team,
+                GameLog.week,
+                GameLog.opponent,
+                PassingStats.passing_yards,
+                PassingStats.passing_tds,
+                PassingStats.interceptions,
+                PassingStats.completions,
+                PassingStats.attempts,
+            )
+            .join(GameLog, Player.player_id == GameLog.player_id)
+            .join(
+                PassingStats,
+                and_(
+                    PassingStats.player_id == Player.player_id,
+                    PassingStats.game_id == GameLog.game_id,
+                ),
+            )
+            .filter(
+                GameLog.season == season,
+                Player.position == "QB",
+                PassingStats.passing_yards >= min_yards,
+            )
+            .order_by(desc(PassingStats.passing_yards))
+            .limit(limit)
+            .all()
+        )
+
+        return jsonify(
+            [
+                {
+                    "player_name": r.player_name,
+                    "team": r.team,
+                    "week": r.week,
+                    "opponent": r.opponent,
+                    "passing_yards": r.passing_yards or 0,
+                    "passing_tds": r.passing_tds or 0,
+                    "interceptions": r.interceptions or 0,
+                    "completions": r.completions or 0,
+                    "attempts": r.attempts or 0,
+                    "completion_pct": round(
+                        (r.completions / r.attempts * 100), 1
+                    )
+                    if r.attempts and r.completions
+                    else 0,
+                }
+                for r in results
+            ]
+        )
+
+    @app.route("/api/queries/rushing-leaders", methods=["GET"])
+    def query_rushing_leaders():
+        """Simple query: Season rushing leaders"""
+        season = request.args.get("season", 2024, type=int)
+        limit = request.args.get("limit", 20, type=int)
+
+        results = (
+            db.session.query(
+                Player.player_name,
+                Player.position,
+                Player.team,
+                func.sum(RushingStats.rushing_yards).label("total_yards"),
+                func.sum(RushingStats.rushing_tds).label("total_tds"),
+                func.sum(RushingStats.carries).label("total_carries"),
+                func.count(GameLog.week).label("games_played"),
+            )
+            .join(GameLog, Player.player_id == GameLog.player_id)
+            .join(
+                RushingStats,
+                and_(
+                    RushingStats.player_id == Player.player_id,
+                    RushingStats.game_id == GameLog.game_id,
+                ),
+            )
+            .filter(GameLog.season == season)
+            .group_by(Player.player_id, Player.player_name, Player.position, Player.team)
+            .order_by(desc("total_yards"))
+            .limit(limit)
+            .all()
+        )
+
+        return jsonify(
+            [
+                {
+                    "player_name": r.player_name,
+                    "position": r.position,
+                    "team": r.team,
+                    "total_yards": r.total_yards or 0,
+                    "total_tds": r.total_tds or 0,
+                    "total_carries": r.total_carries or 0,
+                    "games_played": r.games_played or 0,
+                    "yards_per_game": round(r.total_yards / r.games_played, 1)
+                    if r.games_played and r.total_yards
+                    else 0,
+                    "yards_per_carry": round(r.total_yards / r.total_carries, 1)
+                    if r.total_carries and r.total_yards
+                    else 0,
+                }
+                for r in results
+            ]
+        )
+
+    @app.route("/api/queries/receiving-leaders", methods=["GET"])
+    def query_receiving_leaders():
+        """Simple query: Season receiving leaders"""
+        season = request.args.get("season", 2024, type=int)
+        limit = request.args.get("limit", 20, type=int)
+
+        results = (
+            db.session.query(
+                Player.player_name,
+                Player.position,
+                Player.team,
+                func.sum(ReceivingStats.receiving_yards).label("total_yards"),
+                func.sum(ReceivingStats.receptions).label("total_receptions"),
+                func.sum(ReceivingStats.receiving_tds).label("total_tds"),
+                func.sum(ReceivingStats.targets).label("total_targets"),
+                func.count(GameLog.week).label("games_played"),
+            )
+            .join(GameLog, Player.player_id == GameLog.player_id)
+            .join(
+                ReceivingStats,
+                and_(
+                    ReceivingStats.player_id == Player.player_id,
+                    ReceivingStats.game_id == GameLog.game_id,
+                ),
+            )
+            .filter(GameLog.season == season)
+            .group_by(Player.player_id, Player.player_name, Player.position, Player.team)
+            .order_by(desc("total_yards"))
+            .limit(limit)
+            .all()
+        )
+
+        return jsonify(
+            [
+                {
+                    "player_name": r.player_name,
+                    "position": r.position,
+                    "team": r.team,
+                    "total_yards": r.total_yards or 0,
+                    "total_receptions": r.total_receptions or 0,
+                    "total_tds": r.total_tds or 0,
+                    "total_targets": r.total_targets or 0,
+                    "games_played": r.games_played or 0,
+                    "yards_per_game": round(r.total_yards / r.games_played, 1)
+                    if r.games_played and r.total_yards
+                    else 0,
+                    "yards_per_catch": round(r.total_yards / r.total_receptions, 1)
+                    if r.total_receptions and r.total_yards
+                    else 0,
+                    "catch_rate": round(r.total_receptions / r.total_targets * 100, 1)
+                    if r.total_targets and r.total_receptions
+                    else 0,
+                }
+                for r in results
+            ]
+        )
+
+    @app.route("/api/queries/team-stats", methods=["GET"])
+    def query_team_stats():
+        """Aggregate query: Team offensive stats for a season"""
+        season = request.args.get("season", 2024, type=int)
+        team = request.args.get("team", "KC")
+
+        # Get team passing stats
+        pass_stats = (
+            db.session.query(
+                func.sum(PassingStats.passing_yards).label("total_pass_yards"),
+                func.sum(PassingStats.passing_tds).label("total_pass_tds"),
+                func.sum(PassingStats.interceptions).label("total_ints"),
+            )
+            .join(GameLog, PassingStats.player_id == GameLog.player_id)
+            .filter(GameLog.season == season, GameLog.team == team)
+            .first()
+        )
+
+        # Get team rushing stats
+        rush_stats = (
+            db.session.query(
+                func.sum(RushingStats.rushing_yards).label("total_rush_yards"),
+                func.sum(RushingStats.rushing_tds).label("total_rush_tds"),
+            )
+            .join(GameLog, RushingStats.player_id == GameLog.player_id)
+            .filter(GameLog.season == season, GameLog.team == team)
+            .first()
+        )
+
+        # Get team receiving stats
+        rec_stats = (
+            db.session.query(
+                func.sum(ReceivingStats.receiving_yards).label("total_rec_yards"),
+                func.sum(ReceivingStats.receiving_tds).label("total_rec_tds"),
+                func.sum(ReceivingStats.receptions).label("total_receptions"),
+            )
+            .join(GameLog, ReceivingStats.player_id == GameLog.player_id)
+            .filter(GameLog.season == season, GameLog.team == team)
+            .first()
+        )
+
+        # Get games played
+        games = (
+            db.session.query(func.count(func.distinct(GameLog.game_id)))
+            .filter(GameLog.season == season, GameLog.team == team)
+            .scalar()
+        )
+
+        return jsonify(
+            {
+                "team": team,
+                "season": season,
+                "games_played": games or 0,
+                "passing": {
+                    "total_yards": pass_stats.total_pass_yards or 0,
+                    "total_tds": pass_stats.total_pass_tds or 0,
+                    "total_ints": pass_stats.total_ints or 0,
+                    "yards_per_game": round(pass_stats.total_pass_yards / games, 1)
+                    if games and pass_stats.total_pass_yards
+                    else 0,
+                },
+                "rushing": {
+                    "total_yards": rush_stats.total_rush_yards or 0,
+                    "total_tds": rush_stats.total_rush_tds or 0,
+                    "yards_per_game": round(rush_stats.total_rush_yards / games, 1)
+                    if games and rush_stats.total_rush_yards
+                    else 0,
+                },
+                "receiving": {
+                    "total_yards": rec_stats.total_rec_yards or 0,
+                    "total_tds": rec_stats.total_rec_tds or 0,
+                    "total_receptions": rec_stats.total_receptions or 0,
+                    "yards_per_game": round(rec_stats.total_rec_yards / games, 1)
+                    if games and rec_stats.total_rec_yards
+                    else 0,
+                },
+            }
+        )
+
+    @app.route("/api/queries/player-game-log", methods=["GET"])
+    def query_player_game_log():
+        """Simple query: Player's complete game log for a season"""
+        player_id = request.args.get("player_id")
+        season = request.args.get("season", 2024, type=int)
+
+        if not player_id:
+            return jsonify({"error": "player_id is required"}), 400
+
+        player = Player.query.get(player_id)
+        if not player:
+            return jsonify({"error": "Player not found"}), 404
+
+        results = (
+            db.session.query(GameLog, Game)
+            .join(Game, GameLog.game_id == Game.game_id)
+            .filter(GameLog.player_id == player_id, GameLog.season == season)
+            .order_by(GameLog.week)
+            .all()
+        )
+
+        return jsonify(
+            {
+                "player": {
+                    "player_id": player.player_id,
+                    "player_name": player.player_name,
+                    "position": player.position,
+                    "team": player.team,
+                },
+                "season": season,
+                "games": [
+                    {
+                        "week": gl.week,
+                        "opponent": gl.opponent,
+                        "fantasy_points": round(float(gl.fantasy_points_ppr), 2)
+                        if gl.fantasy_points_ppr
+                        else 0,
+                        "gameday": g.gameday.isoformat() if g.gameday else None,
+                        "stadium": g.stadium,
+                    }
+                    for gl, g in results
+                ],
+            }
+        )
