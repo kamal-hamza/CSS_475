@@ -1776,6 +1776,7 @@ def register_routes(app):
             db.session.query(
                 GameLog,
                 Game,
+                Stadium.stadium_name,
                 case(
                     (Game.home_team == player.team, Game.away_team),
                     else_=Game.home_team
@@ -1788,6 +1789,7 @@ def register_routes(app):
                 ).label("receptions")
             )
             .join(Game, GameLog.game_id == Game.game_id)
+            .outerjoin(Stadium, Game.stadium_id == Stadium.stadium_id)
             .filter(GameLog.player_id == player_id, Game.season == season)
             .order_by(Game.week)
             .all()
@@ -1810,9 +1812,9 @@ def register_routes(app):
                         if gl.fantasy_points
                         else 0,
                         "gameday": g.gameday.isoformat() if g.gameday else None,
-                        "stadium": g.stadium,
+                        "stadium": stadium_name or "Unknown",
                     }
-                    for gl, g, opponent, receptions in results
+                    for gl, g, stadium_name, opponent, receptions in results
                 ],
             }
         )
