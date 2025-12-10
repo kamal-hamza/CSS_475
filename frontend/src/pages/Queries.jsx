@@ -34,7 +34,7 @@ import {
 } from "@mui/icons-material";
 import api from "../services/api";
 
-const ComplexQueries = () => {
+const Queries = () => {
     const [loading, setLoading] = useState({});
     const [results, setResults] = useState({});
     const [params, setParams] = useState({
@@ -49,6 +49,7 @@ const ComplexQueries = () => {
     // Auto-run the first simple query on page load
     useEffect(() => {
         executeQuery("allTeams", "/api/queries/all-teams", {});
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     const executeQuery = async (queryType, endpoint, queryParams = {}) => {
@@ -1100,4 +1101,4 @@ ORDER BY gl.week`,
     );
 };
 
-export default ComplexQueries;
+export default Queries;

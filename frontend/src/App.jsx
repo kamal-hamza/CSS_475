@@ -10,7 +10,7 @@ import Teams from "./pages/Teams";
 import Games from "./pages/Games";
 import PlayerProfile from "./pages/PlayerProfile";
 import Admin from "./pages/Admin";
-import ComplexQueries from "./pages/ComplexQueries";
+import Queries from "./pages/Queries";
 import Search from "./pages/Search";
 
 function App() {
@@ -38,10 +38,7 @@ function App() {
                                 element={<PlayerProfile />}
                             />
                             <Route path="/admin" element={<Admin />} />
-                            <Route
-                                path="/complex-queries"
-                                element={<ComplexQueries />}
-                            />
+                            <Route path="/queries" element={<Queries />} />
                         </Routes>
                     </Box>
                 </Box>

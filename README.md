@@ -235,9 +235,9 @@ The database design follows **3rd Normal Form (3NF)**:
     - Complete game log
     - Yards breakdown visualization
 
-6. **Complex Queries** (`/complex-queries`)
+6. **Queries** (`/queries`)
     - Interactive query execution
-    - 5 advanced SQL queries with visualization
+    - 9 SQL queries (beginner → advanced) with visualization
     - Customizable parameters
     - SQL query display
 

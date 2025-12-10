@@ -58,7 +58,7 @@ const Admin = () => {
     const [games, setGames] = useState([]);
     const [openDialog, setOpenDialog] = useState(false);
     const [dialogMode, setDialogMode] = useState("create");
-    const [currentEntity, setCurrentEntity] = useState(null);
+    const [_currentEntity, setCurrentEntity] = useState(null);
     const [snackbar, setSnackbar] = useState({
         open: false,
         message: "",
@@ -98,30 +98,31 @@ const Admin = () => {
         location: "",
     });
 
-    useEffect(() => {
-        fetchData();
-    }, [tabValue]);
+    const showSnackbar = (message, severity = "success") => {
+        setSnackbar({ open: true, message, severity });
+    };
 
     const fetchData = async () => {
         try {
             if (tabValue === 0) {
-                const response = await api.get("/players?limit=100");
+                const response = await api.get("/api/players?limit=100");
                 setPlayers(response.data);
             } else if (tabValue === 1) {
-                const response = await api.get("/teams");
+                const response = await api.get("/api/teams");
                 setTeams(response.data);
             } else if (tabValue === 2) {
-                const response = await api.get("/games?season=2024");
+                const response = await api.get("/api/games?season=2024");
                 setGames(response.data);
             }
-        } catch (error) {
+        } catch {
             showSnackbar("Error fetching data", "error");
         }
     };
 
-    const showSnackbar = (message, severity = "success") => {
-        setSnackbar({ open: true, message, severity });
-    };
+    useEffect(() => {
+        fetchData();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [tabValue]);
 
     const handleCloseSnackbar = () => {
         setSnackbar({ ...snackbar, open: false });
@@ -222,8 +223,8 @@ const Admin = () => {
                     tabValue === 0
                         ? data.player_id
                         : tabValue === 1
-                        ? data.team_abbr
-                        : data.game_id;
+                          ? data.team_abbr
+                          : data.game_id;
                 await api.put(`/${endpoint}/${id}`, data);
                 showSnackbar("Item updated successfully");
             }
@@ -293,7 +294,10 @@ const Admin = () => {
                         label="Team"
                         value={playerForm.team}
                         onChange={(e) =>
-                            setPlayerForm({ ...playerForm, team: e.target.value })
+                            setPlayerForm({
+                                ...playerForm,
+                                team: e.target.value,
+                            })
                         }
                     />
                 </Grid>
@@ -310,7 +314,10 @@ const Admin = () => {
                         label="Team Abbreviation"
                         value={teamForm.team_abbr}
                         onChange={(e) =>
-                            setTeamForm({ ...teamForm, team_abbr: e.target.value })
+                            setTeamForm({
+                                ...teamForm,
+                                team_abbr: e.target.value,
+                            })
                         }
                         disabled={dialogMode === "edit"}
                     />
@@ -321,7 +328,10 @@ const Admin = () => {
                         label="Team Name"
                         value={teamForm.team_name}
                         onChange={(e) =>
-                            setTeamForm({ ...teamForm, team_name: e.target.value })
+                            setTeamForm({
+                                ...teamForm,
+                                team_name: e.target.value,
+                            })
                         }
                     />
                 </Grid>
@@ -369,7 +379,10 @@ const Admin = () => {
                         label="Team Color"
                         value={teamForm.team_color}
                         onChange={(e) =>
-                            setTeamForm({ ...teamForm, team_color: e.target.value })
+                            setTeamForm({
+                                ...teamForm,
+                                team_color: e.target.value,
+                            })
                         }
                     />
                 </Grid>
@@ -386,7 +399,10 @@ const Admin = () => {
                         label="Game ID"
                         value={gameForm.game_id}
                         onChange={(e) =>
-                            setGameForm({ ...gameForm, game_id: e.target.value })
+                            setGameForm({
+                                ...gameForm,
+                                game_id: e.target.value,
+                            })
                         }
                         disabled={dialogMode === "edit"}
                     />
@@ -398,7 +414,10 @@ const Admin = () => {
                         type="number"
                         value={gameForm.season}
                         onChange={(e) =>
-                            setGameForm({ ...gameForm, season: parseInt(e.target.value) })
+                            setGameForm({
+                                ...gameForm,
+                                season: parseInt(e.target.value),
+                            })
                         }
                     />
                 </Grid>
@@ -409,7 +428,10 @@ const Admin = () => {
                         type="number"
                         value={gameForm.week}
                         onChange={(e) =>
-                            setGameForm({ ...gameForm, week: parseInt(e.target.value) })
+                            setGameForm({
+                                ...gameForm,
+                                week: parseInt(e.target.value),
+                            })
                         }
                     />
                 </Grid>
@@ -419,7 +441,10 @@ const Admin = () => {
                         label="Away Team"
                         value={gameForm.away_team}
                         onChange={(e) =>
-                            setGameForm({ ...gameForm, away_team: e.target.value })
+                            setGameForm({
+                                ...gameForm,
+                                away_team: e.target.value,
+                            })
                         }
                     />
                 </Grid>
@@ -429,7 +454,10 @@ const Admin = () => {
                         label="Home Team"
                         value={gameForm.home_team}
                         onChange={(e) =>
-                            setGameForm({ ...gameForm, home_team: e.target.value })
+                            setGameForm({
+                                ...gameForm,
+                                home_team: e.target.value,
+                            })
                         }
                     />
                 </Grid>
@@ -468,7 +496,10 @@ const Admin = () => {
                         type="date"
                         value={gameForm.gameday}
                         onChange={(e) =>
-                            setGameForm({ ...gameForm, gameday: e.target.value })
+                            setGameForm({
+                                ...gameForm,
+                                gameday: e.target.value,
+                            })
                         }
                         InputLabelProps={{ shrink: true }}
                     />
@@ -479,7 +510,10 @@ const Admin = () => {
                         label="Stadium"
                         value={gameForm.stadium}
                         onChange={(e) =>
-                            setGameForm({ ...gameForm, stadium: e.target.value })
+                            setGameForm({
+                                ...gameForm,
+                                stadium: e.target.value,
+                            })
                         }
                     />
                 </Grid>
@@ -489,7 +523,10 @@ const Admin = () => {
                         label="Location"
                         value={gameForm.location}
                         onChange={(e) =>
-                            setGameForm({ ...gameForm, location: e.target.value })
+                            setGameForm({
+                                ...gameForm,
+                                location: e.target.value,
+                            })
                         }
                     />
                 </Grid>
@@ -500,7 +537,11 @@ const Admin = () => {
     return (
         <Container maxWidth="xl">
             <Box sx={{ mb: 4 }}>
-                <Typography variant="h3" component="h1" sx={{ fontWeight: "bold", mb: 1 }}>
+                <Typography
+                    variant="h3"
+                    component="h1"
+                    sx={{ fontWeight: "bold", mb: 1 }}
+                >
                     Admin Dashboard
                 </Typography>
                 <Typography variant="h6" color="text.secondary">
@@ -553,14 +594,21 @@ const Admin = () => {
                             <TableBody>
                                 {players.map((player) => (
                                     <TableRow key={player.player_id}>
-                                        <TableCell>{player.player_id}</TableCell>
-                                        <TableCell>{player.player_name}</TableCell>
+                                        <TableCell>
+                                            {player.player_id}
+                                        </TableCell>
+                                        <TableCell>
+                                            {player.player_name}
+                                        </TableCell>
                                         <TableCell>{player.position}</TableCell>
                                         <TableCell>{player.team}</TableCell>
                                         <TableCell align="right">
                                             <IconButton
                                                 onClick={() =>
-                                                    handleOpenDialog("edit", player)
+                                                    handleOpenDialog(
+                                                        "edit",
+                                                        player,
+                                                    )
                                                 }
                                                 color="primary"
                                             >
@@ -570,7 +618,7 @@ const Admin = () => {
                                                 onClick={() =>
                                                     handleDelete(
                                                         player.player_id,
-                                                        "players"
+                                                        "players",
                                                     )
                                                 }
                                                 color="error"
@@ -620,17 +668,27 @@ const Admin = () => {
                                         <TableCell>{team.team_abbr}</TableCell>
                                         <TableCell>{team.team_name}</TableCell>
                                         <TableCell>{team.team_conf}</TableCell>
-                                        <TableCell>{team.team_division}</TableCell>
+                                        <TableCell>
+                                            {team.team_division}
+                                        </TableCell>
                                         <TableCell align="right">
                                             <IconButton
-                                                onClick={() => handleOpenDialog("edit", team)}
+                                                onClick={() =>
+                                                    handleOpenDialog(
+                                                        "edit",
+                                                        team,
+                                                    )
+                                                }
                                                 color="primary"
                                             >
                                                 <EditIcon />
                                             </IconButton>
                                             <IconButton
                                                 onClick={() =>
-                                                    handleDelete(team.team_abbr, "teams")
+                                                    handleDelete(
+                                                        team.team_abbr,
+                                                        "teams",
+                                                    )
                                                 }
                                                 color="error"
                                             >
@@ -683,19 +741,28 @@ const Admin = () => {
                                         <TableCell>{game.away_team}</TableCell>
                                         <TableCell>{game.home_team}</TableCell>
                                         <TableCell>
-                                            {game.away_score} - {game.home_score}
+                                            {game.away_score} -{" "}
+                                            {game.home_score}
                                         </TableCell>
                                         <TableCell>{game.gameday}</TableCell>
                                         <TableCell align="right">
                                             <IconButton
-                                                onClick={() => handleOpenDialog("edit", game)}
+                                                onClick={() =>
+                                                    handleOpenDialog(
+                                                        "edit",
+                                                        game,
+                                                    )
+                                                }
                                                 color="primary"
                                             >
                                                 <EditIcon />
                                             </IconButton>
                                             <IconButton
                                                 onClick={() =>
-                                                    handleDelete(game.game_id, "games")
+                                                    handleDelete(
+                                                        game.game_id,
+                                                        "games",
+                                                    )
                                                 }
                                                 color="error"
                                             >
@@ -719,7 +786,11 @@ const Admin = () => {
             >
                 <DialogTitle>
                     {dialogMode === "create" ? "Create" : "Edit"}{" "}
-                    {tabValue === 0 ? "Player" : tabValue === 1 ? "Team" : "Game"}
+                    {tabValue === 0
+                        ? "Player"
+                        : tabValue === 1
+                          ? "Team"
+                          : "Game"}
                 </DialogTitle>
                 {tabValue === 0 && renderPlayerDialog()}
                 {tabValue === 1 && renderTeamDialog()}

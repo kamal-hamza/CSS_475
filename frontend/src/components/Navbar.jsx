@@ -16,7 +16,6 @@ import SportsFootballIcon from "@mui/icons-material/SportsFootball";
 import { searchPlayers } from "../services/api";
 
 const Navbar = () => {
-    const [searchQuery, setSearchQuery] = useState("");
     const [searchResults, setSearchResults] = useState([]);
     const [inputValue, setInputValue] = useState("");
     const navigate = useNavigate();
@@ -115,10 +114,10 @@ const Navbar = () => {
                         </Button>
                         <Button
                             component={Link}
-                            to="/complex-queries"
+                            to="/queries"
                             sx={{ my: 2, color: "white", display: "block" }}
                         >
-                            Complex Queries
+                            Queries
                         </Button>
                         <Button
                             component={Link}
